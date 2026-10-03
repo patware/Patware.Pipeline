@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Pipeline.Blazor/Pipeline.Blazor.csproj" />
+    <PackageReference Include="bunit" Version="1.40.0" />
+    <!-- Override bUnit's transitive version with the patched HTML parser. -->
+    <PackageReference Include="AngleSharp" Version="1.5.0" />
+  </ItemGroup>
+</Project>

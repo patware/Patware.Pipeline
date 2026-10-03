@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj" />
+    <Compile Include="../Shared/Samples.cs" Link="Shared/Samples.cs" />
+    <Compile Include="../Shared/StoreContractTests.cs" Link="Shared/StoreContractTests.cs" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+</Project>

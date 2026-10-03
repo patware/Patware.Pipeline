@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Pipeline.Hangfire/Pipeline.Hangfire.csproj" />
+    <Compile Include="../Shared/Samples.cs" Link="Shared/Samples.cs" />
+
+
+  </ItemGroup>
+</Project>

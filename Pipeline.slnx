@@ -9,4 +9,11 @@
   <Project Path="src/Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj" Id="b39031c0-5975-4ccf-b141-d1f4d6857c80" />
   <Project Path="src/Pipeline.Runtime/Pipeline.Runtime.csproj" Id="e773e4c0-2857-4c7f-8517-91979e77b53e" />
   <Project Path="src/Pipeline.Web/Pipeline.Web.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Pipeline.Core.Tests/Pipeline.Core.Tests.csproj" />
+    <Project Path="tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj" />
+    <Project Path="tests/Pipeline.Hangfire.Tests/Pipeline.Hangfire.Tests.csproj" />
+    <Project Path="tests/Pipeline.Persistence.EntityFrameworkCore.Tests/Pipeline.Persistence.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="tests/Pipeline.Blazor.Tests/Pipeline.Blazor.Tests.csproj" />
+  </Folder>
 </Solution>
