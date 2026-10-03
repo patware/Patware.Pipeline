@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="src/Pipeline.Blazor/Pipeline.Blazor.csproj" Id="febb32a3-ea44-49ea-b896-28ccfa23a807" />
   <Project Path="src/Pipeline.Core/Pipeline.Core.csproj" Id="adcad8b8-e3a8-47aa-8ca4-72c767089a81" />
   <Project Path="src/Pipeline.Hangfire/Pipeline.Hangfire.csproj" Id="c918a489-d812-476c-af12-9aab2b374509" />
