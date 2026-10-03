@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/Pipeline.Blazor/Pipeline.Blazor.csproj" Id="febb32a3-ea44-49ea-b896-28ccfa23a807" />
+  <Project Path="src/Pipeline.Core/Pipeline.Core.csproj" Id="adcad8b8-e3a8-47aa-8ca4-72c767089a81" />
+  <Project Path="src/Pipeline.Hangfire/Pipeline.Hangfire.csproj" Id="c918a489-d812-476c-af12-9aab2b374509" />
+  <Project Path="src/Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj" Id="b39031c0-5975-4ccf-b141-d1f4d6857c80" />
+  <Project Path="src/Pipeline.Runtime/Pipeline.Runtime.csproj" Id="e773e4c0-2857-4c7f-8517-91979e77b53e" />
+  <Project Path="src/Pipeline.Web/Pipeline.Web.csproj" />
+</Solution>

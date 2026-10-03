@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [
+            "Pipeline.Blazor/Pipeline.Blazor.csproj",
+            "Pipeline.Core/Pipeline.Core.csproj",
+            "Pipeline.Hangfire/Pipeline.Hangfire.csproj",
+            "Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj",
+            "Pipeline.Runtime/Pipeline.Runtime.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "properties": {
+        "Configuration": "Release",
+        "TargetFramework": "net10.0"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "index.md",
+          "toc.yml",
+          "api/**/*.yml"
+        ]
+      }
+    ],
+    "dest": "_site",
+    "template": [
+      "default",
+      "modern"
+    ],
+    "postProcessors": [
+      "ExtractSearchIndex"
+    ],
+    "globalMetadata": {
+      "_appName": "Pipeline",
+      "_appTitle": "Pipeline documentation",
+      "_enableSearch": true
+    }
+  }
+}

@@ -1,0 +1,124 @@
+﻿.log-card {
+    overflow: hidden;
+    border: 1px solid #333;
+    border-radius: 0.5rem;
+    background: #000;
+    color: #d4d4d4;
+}
+
+.log-header {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #333;
+    background: #171717;
+}
+
+.log-count {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 1rem;
+    background: #333;
+    color: #eee;
+    font-size: 0.8rem;
+}
+
+.log-console {
+    max-height: 65vh;
+    overflow: auto;
+    padding: 0.75rem 0;
+    background: #000;
+    font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    font-variant-ligatures: none;
+    tab-size: 4;
+}
+
+    .log-console:focus-visible {
+        outline: 2px solid #75bfff;
+        outline-offset: -2px;
+    }
+
+.log-lines {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.log-line {
+    display: grid;
+    grid-template-columns: 5ch 26ch 5ch minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    padding: 0.125rem 1rem;
+}
+
+    .log-line:hover {
+        background: #141414;
+    }
+
+.log-number {
+    color: #858585;
+    text-align: right;
+    user-select: none;
+}
+
+.log-timestamp {
+    color: #a0a0a0;
+    white-space: nowrap;
+}
+
+.log-level {
+    font-weight: 700;
+}
+
+.log-info {
+    color: #d4d4d4;
+}
+
+.log-warning {
+    color: #ffcc66;
+}
+
+.log-error {
+    color: #ff8080;
+}
+
+.log-message {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.log-empty {
+    margin: 0;
+    padding: 0.5rem 1rem;
+    color: #a0a0a0;
+}
+
+@media (max-width: 767.98px) {
+    .log-line {
+        grid-template-columns: 4ch 5ch minmax(0, 1fr);
+        gap: 0.5rem;
+    }
+
+    .log-number {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+    }
+
+    .log-timestamp {
+        grid-column: 2 / -1;
+        grid-row: 1;
+    }
+
+    .log-level {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .log-message {
+        grid-column: 3;
+        grid-row: 2;
+    }
+}

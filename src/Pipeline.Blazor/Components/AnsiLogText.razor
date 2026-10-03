@@ -1,0 +1,31 @@
+﻿@namespace Pipeline.Blazor.Components
+@using Pipeline.Blazor.Logging
+
+@foreach (var segment in segments)
+{
+    <span style="@segment.Css">@segment.Text</span>
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the log text to render, including optional ANSI formatting sequences.
+    /// </summary>
+    /// <remarks>Text is HTML-encoded by Razor; each value starts with fresh formatting state.</remarks>
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = "";
+
+    private string? parsedText;
+    private IReadOnlyList<AnsiLogSegment> segments =Array.Empty<AnsiLogSegment>();
+
+    /// <summary>
+    /// Parses a new text value into styled segments, retaining the cached segments when the value is unchanged.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(parsedText, Text, StringComparison.Ordinal))
+            return;
+
+        segments = AnsiLogParser.Parse(Text);
+        parsedText = Text;
+    }
+}

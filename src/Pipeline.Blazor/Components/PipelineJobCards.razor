@@ -1,0 +1,314 @@
+﻿@using Pipeline.Runtime
+@implements IAsyncDisposable
+@inject TimeProvider Clock
+
+<section class="mb-4" aria-labelledby="run-jobs-heading">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <h2 id="run-jobs-heading" class="h6 mb-0">Jobs</h2>
+        <span class="badge text-bg-secondary">@Jobs.Count</span>
+    </div>
+
+    @if (Jobs.Count == 0)
+    {
+        <p class="text-body-secondary mb-0">
+            No job information is available for this run.
+        </p>
+    }
+    else
+    {
+        <ul class="job-grid">
+            @foreach (var job in Jobs)
+            {
+                var appearance = Appearance(job.Status);
+
+                <li @key="(job.RunId, job.JobId)" class="job-card card shadow-sm @appearance.Card">
+                    <div class="card-body">
+                        <div class="job-card-header">
+                            <h3 class="h6 mb-0 job-name">@job.JobId</h3>
+
+                            <span class="badge @appearance.Badge">
+                                @StatusLabel(job.Status)
+                            </span>
+                        </div>
+
+                        <dl class="job-timing mb-0">
+                            <dt>Started</dt>
+                            <dd>
+                                @if (job.StartedAt is { } started)
+                                {
+                                    <time datetime="@started.ToString("O")">
+                                        @FormatTimestamp(started)
+                                    </time>
+                                }
+                                else
+                                {
+                                    <span>Not started</span>
+                                }
+                            </dd>
+
+                            @if (job.FinishedAt is { } finished)
+                            {
+                                <dt>Finished</dt>
+                                <dd>
+                                    <time datetime="@finished.ToString("O")">
+                                        @FormatTimestamp(finished)
+                                    </time>
+                                </dd>
+
+                                <dt>Duration</dt>
+                                <dd>
+                                    @(job.StartedAt is { } start
+                                        ? FormatDuration(finished - start)
+                                        : "Not run")
+                                </dd>
+                            }
+                            else if (job.Status == JobExecutionStatus.Running)
+                            {
+                                <dt>Elapsed</dt>
+                                <dd>
+                                    @(job.StartedAt is { } start
+                                        ? FormatDuration(_now - start)
+                                        : "Unavailable")
+                                </dd>
+                            }
+                            else if (job.Status != JobExecutionStatus.Pending)
+                            {
+                                <dt>Finished</dt>
+                                <dd>Unavailable</dd>
+
+                                <dt>Duration</dt>
+                                <dd>
+                                    @(job.StartedAt is null
+                                        ? "Not run"
+                                        : "Unavailable")
+                                </dd>
+                            }
+                        </dl>
+                        <div class="mt-3">
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href="@LogUrl(job.RunId, job.JobId)">
+                                View job logs
+                            </a>
+                        </div>
+
+                        <ul class="list-unstyled mt-3 mb-0">
+                            @foreach (var step in Steps
+                                .Where(candidate => candidate.JobId == job.JobId)
+                                .OrderBy(candidate => candidate.StepId, StringComparer.Ordinal))
+                            {
+                                <li @key="(step.RunId, step.JobId, step.StepId)"
+                                    class="mb-2">
+                                    <a href="@LogUrl(step.RunId, step.JobId, step.StepId)">
+                                        @step.StepId
+                                    </a>
+                                    <span class="small text-body-secondary">
+                                        (@step.Status)
+                                    </span>
+                                    @if (PollStatus(job, step) is { } pollStatus)
+                                    {
+                                        <div class="small text-body-secondary mt-1">
+                                            @pollStatus
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    /// <summary>Gets or sets the jobs to display, in the desired card order.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<JobExecutionState> Jobs { get; set; } = [];
+
+    /// <summary>Gets or sets the steps used to display each job's polling progress and log links.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<StepExecutionState> Steps { get; set; } = [];
+
+    private readonly CancellationTokenSource _clockCancellation = new();
+    private Task? _clockTask;
+    private DateTimeOffset _now;
+
+    /// <summary>Updates the clock value used to display elapsed job durations and polling countdowns.</summary>
+    protected override void OnParametersSet()
+    {
+        _now = Clock.GetUtcNow();
+    }
+
+    /// <summary>Starts the one-second display clock after the first render.</summary>
+    /// <param name="firstRender">Whether this is the component's first render.</param>
+    /// <returns>A completed lifecycle task; the clock loop runs separately.</returns>
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _clockTask = UpdateClockAsync(_clockCancellation.Token);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task UpdateClockAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(() =>
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    if (Jobs.Any(job =>
+                        job.Status == JobExecutionStatus.Running &&
+                        job.StartedAt.HasValue &&
+                        !job.FinishedAt.HasValue))
+                    {
+                        _now = Clock.GetUtcNow();
+                        StateHasChanged();
+                    }
+                });
+            }
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            // The component was disposed.
+        }
+    }
+
+    private static string FormatTimestamp(DateTimeOffset timestamp) => timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz");
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration < TimeSpan.Zero)
+        {
+            duration = TimeSpan.Zero;
+        }
+
+        return duration.Days > 0
+            ? $"{duration.Days}d {duration.Hours:00}h " +
+              $"{duration.Minutes:00}m {duration.Seconds:00}s"
+            : duration.TotalHours >= 1
+                ? $"{duration.Hours}h {duration.Minutes:00}m " +
+                  $"{duration.Seconds:00}s"
+                : $"{duration.Minutes}m {duration.Seconds:00}s";
+    }
+
+    private static string StatusLabel(JobExecutionStatus status) =>
+        status switch
+        {
+            JobExecutionStatus.ConditionSkipped => "Skipped",
+            JobExecutionStatus.TimedOut => "Timed out",
+            _ => status.ToString()
+        };
+
+    private static (string Card, string Badge) Appearance(
+        JobExecutionStatus status) =>
+        status switch
+        {
+            JobExecutionStatus.Running =>("job-running", "text-bg-primary"),
+
+            JobExecutionStatus.Succeeded => ("job-succeeded", "text-bg-success"),
+
+            JobExecutionStatus.Failed or JobExecutionStatus.TimedOut => ("job-failed", "text-bg-danger"),
+
+            JobExecutionStatus.Blocked => ("job-blocked", "text-bg-warning"),
+
+            _ => ("job-neutral", "text-bg-secondary")
+        };
+
+    /// <summary>Cancels the display clock and waits for its loop to stop before releasing resources.</summary>
+    /// <returns>A task that completes when the clock has stopped.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        _clockCancellation.Cancel();
+
+        try
+        {
+            if (_clockTask is not null)
+            {
+                await _clockTask;
+            }
+        }
+        finally
+        {
+            _clockCancellation.Dispose();
+        }
+    }
+    private string? PollStatus(
+        JobExecutionState job,
+        StepExecutionState step)
+    {
+        // A failed or blocked job can retain an unfinished step.
+        if (job.Status != JobExecutionStatus.Running ||
+            job.FinishedAt.HasValue ||
+            step.PollDeadline is not { } deadline)
+        {
+            return null;
+        }
+
+        if (step.Status is not (
+            StepExecutionStatus.Waiting or
+            StepExecutionStatus.Running))
+        {
+            return null;
+        }
+
+        if (deadline <= _now)
+        {
+            return "Polling deadline reached; awaiting status update.";
+        }
+
+        if (step.Status == StepExecutionStatus.Running)
+        {
+            return "Verification in progress…";
+        }
+
+        if (step.NextAttemptAt is not { } nextAttempt)
+        {
+            return null;
+        }
+
+        // The coordinator can schedule the next wake-up at the deadline.
+        // That wake-up times out the step instead of executing another check.
+        if (nextAttempt >= deadline)
+        {
+            var seconds = Math.Ceiling((deadline - _now).TotalSeconds);
+
+            return $"Polling timeout in {seconds:0} " + (seconds == 1 ? "second." : "seconds.");
+        }
+
+        var remainingSeconds = Math.Ceiling((nextAttempt - _now).TotalSeconds);
+
+        if (remainingSeconds <= 0)
+        {
+            return "Recheck due; awaiting status update.";
+        }
+
+        return $"Recheck in {remainingSeconds:0} " + (remainingSeconds == 1 ? "second." : "seconds.");
+    }
+
+    private static string LogUrl(
+        Guid runId,
+        string jobId,
+        string? stepId = null)
+    {
+        var url = $"pipeline-runs/{runId}?job={Uri.EscapeDataString(jobId)}";
+
+        if (stepId is not null)
+        {
+            url += $"&step={Uri.EscapeDataString(stepId)}";
+        }
+
+        return url + "#run-logs";
+    }
+}

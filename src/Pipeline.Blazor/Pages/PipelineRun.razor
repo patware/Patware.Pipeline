@@ -1,0 +1,381 @@
+﻿@page "/pipeline-runs/{RunId:guid}"
+@rendermode InteractiveServer
+@inherits LivePipelinePage
+
+@using Pipeline.Blazor.Components
+@using Pipeline.Runtime
+
+<PageTitle>@(run?.Title ?? "Pipeline run")</PageTitle>
+
+<p>
+    <a href="pipeline-runs">&larr; All pipeline runs</a>
+</p>
+
+@if (run is null)
+{
+    <h1>Run not found</h1>
+
+    <p>
+        Run <code>@RunId</code> is not available.
+        In-memory runs are cleared when the application restarts.
+    </p>
+}
+else
+{
+    var logEntries = SelectLogs();
+    var logSelectionError = LogSelectionError;
+
+    <div class="bg-body-tertiary rounded p-3 p-md-4">
+
+        @* Header: title on the left, status on the right. *@
+        <header class="d-flex flex-wrap justify-content-between
+            align-items-start gap-3 mb-4">
+            <div class="flex-grow-1 text-break">
+                <h1 class="h4 mb-1">@run.Title</h1>
+
+                <div class="text-body-secondary">
+                    @run.Definition.DisplayName
+                </div>
+
+            </div>
+
+            <span class="badge rounded-pill @StatusClass(run.Status)">
+                @run.Status
+            </span>
+
+            @if (run.Status == global::Pipeline.Runtime.PipelineStatus.Failed)
+            {
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        disabled="@_retrying"
+                        @onclick="RetryAsync">
+                    @(_retrying ? "Resuming…" : "Re-run from failure")
+                </button>
+            }
+
+            @if (_retryError is not null)
+            {
+                <p class="text-danger mt-2" role="alert">@_retryError</p>
+            }
+        </header>
+
+        @* Summary card. *@
+        <section class="card border-0 shadow-sm mb-4"
+                 aria-labelledby="run-summary-heading">
+            <div class="card-body p-3 p-md-4">
+
+                <div class="d-flex flex-wrap justify-content-between
+                    align-items-center gap-2 mb-4">
+                    <h2 id="run-summary-heading" class="h6 mb-0">
+                        Submitted by
+                        <span class="fw-bold">@run.CreatedBy</span>
+                    </h2>
+
+                    <a href="@($"pipeline-runs/{RunId}#run-logs")"
+                       class="btn btn-sm btn-outline-secondary">
+                        View all run logs (@run.Logs.Count)
+                    </a>
+                </div>
+
+                <div class="row g-4">
+
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <h3 class="small text-body-secondary fw-normal mb-2">
+                            Pipeline
+                        </h3>
+
+                        <div class="small text-body-secondary text-break mt-1">
+                            @run.Definition.Id
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <h3 class="small text-body-secondary fw-normal mb-2">
+                            Submitted and queued
+                        </h3>
+
+                        <div class=" text-body-secondary fw-normal mb-2">
+                            Submitted: @FormatTimestamp(run.CreatedAt)
+                        </div>
+
+                        <div class=" text-body-secondary mt-1">
+                            Queued: @FormatTimestamp(run.QueuedAt)
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <h3 class="small text-body-secondary fw-normal mb-2">
+                            Execution
+                        </h3>
+
+                        <div class=" text-body-secondary mt-1">
+                            Started: @FormatTimestamp(run.StartedAt)
+                        </div>
+
+                        <div class=" text-body-secondary mt-1">
+                            Finished: @FormatTimestamp(run.FinishedAt)
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <h3 class="small text-body-secondary fw-normal mb-2">
+                            Current status
+                        </h3>
+
+                        <div class="fw-semibold">@run.Status</div>
+
+                        <div class="small text-body-secondary text-break mt-1">
+                            @run.StatusText
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <PipelineJobCards @key="RunId" Jobs="jobs" Steps="steps"/>
+
+        @* Log card. *@
+        <section id="run-logs"
+                 class="log-card"
+                 aria-labelledby="run-logs-heading">
+
+            <header class="log-header">
+                <div class="d-flex flex-wrap justify-content-between
+                    align-items-center gap-2">
+                    <h2 id="run-logs-heading" class="h6 mb-0">
+                        @LogHeading
+                        <span class="log-count">@logEntries.Length</span>
+                    </h2>
+
+                    @if (SelectedJobId is not null ||
+                         SelectedStepId is not null)
+                    {
+                        <a class="btn btn-sm btn-outline-light"
+                           href="@($"pipeline-runs/{RunId}#run-logs")">
+                            View all run logs
+                        </a>
+                    }
+                </div>
+            </header>
+
+            <div class="log-console"
+                 tabindex="0"
+                 role="region"
+                 aria-labelledby="run-logs-heading">
+
+                @if (logSelectionError is not null)
+                {
+                    <p class="log-empty">@logSelectionError</p>
+                }
+                else if (logEntries.Length == 0)
+                {
+                    <p class="log-empty">No log entries for this selection yet.</p>
+                }
+                else
+                {
+                    <ol class="log-lines">
+                        @foreach (var item in logEntries)
+                        {
+                            var entry = item.Entry;
+
+                            <li @key="(RunId, item.Sequence)"
+                                class="@($"log-line {LogClass(entry.Level)}")">
+
+                                <span class="log-number" aria-hidden="true">
+                                    @(item.Sequence + 1)
+                                </span>
+
+                                <time class="log-timestamp"
+                                      datetime="@entry.Timestamp.ToString("O")">
+                                    @FormatTimestamp(entry.Timestamp)
+                                </time>
+
+                                <span class="log-level">
+                                    @LogLabel(entry.Level)
+                                </span>
+
+                                <div class="log-message"><AnsiLogText Text="@entry.Message" /></div>
+                            </li>
+                        }
+                    </ol>
+                }
+            </div>
+        </section>
+    </div>
+}
+
+@code
+{
+    /// <summary>Gets or sets the run identifier supplied by the pipeline-runs route.</summary>
+    [Parameter]
+    public Guid RunId { get; set; }
+
+    /// <summary>Gets or sets the job log filter from the job query parameter; null selects all run logs.</summary>
+    [SupplyParameterFromQuery(Name = "job")]
+    public string? SelectedJobId { get; set; }
+
+    /// <summary>Gets or sets the step log filter from the step query parameter; requires a selected job.</summary>
+    [SupplyParameterFromQuery(Name = "step")]
+    public string? SelectedStepId { get; set; }
+
+    private IReadOnlyList<StepExecutionState> steps = [];
+
+    private string LogHeading =>
+        SelectedJobId is null
+            ? "Run logs"
+            : SelectedStepId is null
+                ? $"Job logs: {SelectedJobId}"
+                : $"Step logs: {SelectedJobId} / {SelectedStepId}";
+
+
+    private global::Pipeline.Runtime.PipelineRun? run;
+    private IReadOnlyList<JobExecutionState> jobs = [];
+
+    private bool _retrying;
+    private string? _retryError;
+
+    private string? LogSelectionError
+    {
+        get
+        {
+            if (SelectedJobId is null)
+            {
+                return SelectedStepId is null
+                    ? null
+                    : "Select a job before selecting a step.";
+            }
+
+            if (!jobs.Any(job => job.JobId == SelectedJobId))
+            {
+                return "The selected job does not exist in this run.";
+            }
+
+            if (SelectedStepId is not null &&
+                !steps.Any(step =>
+                    step.JobId == SelectedJobId &&
+                    step.StepId == SelectedStepId))
+            {
+                return "The selected step does not exist in this job.";
+            }
+
+            return null;
+        }
+    }
+
+    private (PipelineLogEntry Entry, int Sequence)[] SelectLogs()
+    {
+        if (run is null || LogSelectionError is not null)
+        {
+            return [];
+        }
+
+        return run.Logs
+            .Select((entry, sequence) => (
+                Entry: entry,
+                Sequence: sequence))
+            .Where(item =>
+                SelectedJobId is null ||
+                item.Entry.JobId == SelectedJobId)
+            .Where(item =>
+                SelectedStepId is null ||
+                item.Entry.StepId == SelectedStepId)
+            .ToArray();
+    }
+
+    /// <summary>Loads run, job, and step state, discarding the result if navigation changed the run identifier.</summary>
+    /// <param name="cancellationToken">The token used to cancel snapshot loading.</param>
+    /// <returns>A task that completes after the current page snapshot is updated.</returns>
+    protected override async Task LoadSnapshotAsync(CancellationToken cancellationToken)
+    {
+        var requestedId = RunId;
+
+        var snapshot = await Runtime.GetExecutionAsync(requestedId, cancellationToken);
+
+        if (!cancellationToken.IsCancellationRequested && requestedId == RunId)
+        {
+            run = snapshot?.Run;
+            jobs = snapshot?.Jobs ?? [];
+            steps = snapshot?.Steps ?? [];
+        }
+    }
+
+    private static string FormatTimestamp(DateTimeOffset? timestamp)
+    {
+        return timestamp?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")
+            ?? "—";
+    }
+    private static string StatusClass(
+    global::Pipeline.Runtime.PipelineStatus status) =>
+    status switch
+    {
+        global::Pipeline.Runtime.PipelineStatus.Completed
+            => "text-bg-success",
+
+        global::Pipeline.Runtime.PipelineStatus.Failed
+            => "text-bg-danger",
+
+        global::Pipeline.Runtime.PipelineStatus.Running
+            => "text-bg-primary",
+
+        global::Pipeline.Runtime.PipelineStatus.Queued
+            => "text-bg-warning",
+
+        _ => "text-bg-secondary"
+    };
+
+    private static string LogClass(PipelineLogLevel level) => level switch
+    {
+        PipelineLogLevel.Warning => "log-warning",
+        PipelineLogLevel.Error => "log-error",
+        _ => "log-info"
+    };
+
+    private static string LogLabel(PipelineLogLevel level) => level switch
+        {
+            PipelineLogLevel.Warning => "WARN",
+            PipelineLogLevel.Error => "ERROR",
+            _ => "INFO"
+        };
+
+    /// <summary>Gets a one-second refresh interval for active runs, or the base interval for other states.</summary>
+    protected override TimeSpan RefreshInterval => run?.Status is
+        global::Pipeline.Runtime.PipelineStatus.Queued or
+        global::Pipeline.Runtime.PipelineStatus.Running
+        ? TimeSpan.FromSeconds(1)
+        : base.RefreshInterval;
+
+
+
+
+    private async Task RetryAsync()
+    {
+        if (_retrying)
+        {
+            return;
+        }
+
+        _retrying = true;
+        _retryError = null;
+
+        try
+        {
+            var accepted = await Runtime.RetryAsync(RunId);
+
+            if (!accepted)
+            {
+                _retryError = "The run changed or is no longer eligible for retry.";
+            }
+
+            await ReloadAsync(CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            _retryError = "Could not request a retry. Refresh the run and try again.";
+        }
+        finally
+        {
+            _retrying = false;
+        }
+    }
+}

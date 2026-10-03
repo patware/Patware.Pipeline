@@ -1,0 +1,68 @@
+﻿.job-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.job-card {
+    flex: 1 1 19rem;
+    min-width: min(100%, 19rem);
+    max-width: 25rem;
+    border-top: 4px solid var(--job-accent);
+}
+
+.job-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.job-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.job-timing {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+    .job-timing dt {
+        color: var(--bs-secondary-color);
+        font-weight: 400;
+    }
+
+    .job-timing dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-variant-numeric: tabular-nums;
+    }
+
+.job-running {
+    --job-accent: var(--bs-primary);
+}
+
+.job-succeeded {
+    --job-accent: var(--bs-success);
+}
+
+.job-failed {
+    --job-accent: var(--bs-danger);
+}
+
+.job-blocked {
+    --job-accent: var(--bs-warning);
+}
+
+.job-neutral {
+    --job-accent: var(--bs-secondary);
+}

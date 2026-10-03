@@ -1,0 +1,517 @@
+﻿@page "/simulator"
+@rendermode InteractiveServer
+
+@using System.Globalization
+@using Pipeline.Web.DTO
+@using Pipeline.Web.Services.Fakes
+@using Pipeline.Core.Pipelines
+@using Pipeline.Runtime
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IPipelineResetService PipelineReset
+@inject LogFormattingPipeline FormattingPipeline
+@inject IPipelineRuntime PipelineRuntime
+@inject NavigationManager Navigation
+@inject DirectorySimulator SimulatorSvc
+
+
+<PageTitle>Simulator</PageTitle>
+
+<h1 class="h3">Simulator</h1>
+
+<p class="text-body-secondary">
+    Manage the in-memory AD, Microsoft Graph, and Teams simulation
+    used by pipeline runs. State resets when the application restarts.
+</p>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="@($"alert {(isError ? "alert-danger" : "alert-success")}")" role="status">
+        @message
+    </div>
+}
+
+<section class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5">Log formatting</h2>
+
+        <p class="text-body-secondary">
+            Run samples for severity colors, text styles, ANSI colors,
+            resets, multiline messages, and literal HTML.
+            Sample error messages do not fail the pipeline.
+        </p>
+
+        <button type="button"
+                class="btn btn-primary"
+                disabled="@(formattingStarting || resettingPipelines)"
+                @onclick="StartFormattingAsync">
+            @(formattingStarting ? "Starting..." : "Run formatting samples")
+        </button>
+    </div>
+</section>
+
+<section class="card border-danger mb-4">
+    <div class="card-body">
+        <h2 class="h5">Reset pipeline records</h2>
+
+        <p class="text-body-secondary">
+            Permanently delete all pipeline runs, logs, jobs, steps,
+            saved inputs, arguments, and outputs.
+        </p>
+
+        <button type="button"
+                class="btn btn-danger"
+                disabled="@(resettingPipelines || formattingStarting)"
+                @onclick="ResetPipelinesAsync">
+            @(resettingPipelines
+                ? "Resetting..."
+                : "Delete all pipeline records")
+        </button>
+
+        @if (resettingPipelines)
+        {
+            <p class="text-body-secondary mt-2 mb-0" role="status">
+                Waiting for any current step invocation to finish,
+                then deleting pipeline records.
+            </p>
+        }
+    </div>
+</section>
+
+<section class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5">AD → Entra sync</h2>
+
+        <p class="text-body-secondary">
+            Read AD memberships, update Graph licenses, and simulate
+            Teams voice readiness. Existing phone numbers and calling
+            policies are preserved.
+        </p>
+
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="Sync">
+            Run AD → Entra sync
+        </button>
+
+        @if (syncResults is not null)
+        {
+            <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle mb-0">
+                    <caption>
+                        Results from the most recent manual sync.
+                    </caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">UPN</th>
+                            <th scope="col">Graph licenses</th>
+                            <th scope="col">Enterprise voice</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in syncResults)
+                        {
+                            <tr>
+                                <td>@result.Upn</td>
+                                <td>@result.Licenses</td>
+                                <td>
+                                    @(result.EnterpriseVoiceEnabled
+                                        ? "Enabled"
+                                        : "Disabled")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5">Find or create a user</h2>
+
+        <label for="sim-upn" class="form-label">
+            User principal name
+        </label>
+
+        <div class="input-group">
+            <input id="sim-upn"
+                   class="form-control"
+                   @bind="lookupUpn"
+                   placeholder="John.Doe@home.net" />
+
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    @onclick="Load">
+                Load user
+            </button>
+        </div>
+
+        <div class="form-text">
+            Loading replaces the editor values below.
+            A missing record can be created.
+        </div>
+    </div>
+</section>
+
+@if (graphDraft is not null && teamsDraft is not null)
+{
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Microsoft Graph</h2>
+
+                    <p class="text-break">
+                        @graphDraft.Upn
+                        <span class="badge text-bg-secondary ms-1">
+                            @(graphExists ? "Existing" : "New")
+                        </span>
+                    </p>
+
+                    <div class="form-check mb-3">
+                        <input id="graph-enabled"
+                               type="checkbox"
+                               class="form-check-input"
+                               @bind="graphDraft.Enabled" />
+
+                        <label for="graph-enabled"
+                               class="form-check-label">
+                            Account enabled
+                        </label>
+                    </div>
+
+                    <label for="graph-licenses" class="form-label">
+                        Licenses
+                    </label>
+
+                    <input id="graph-licenses"
+                           class="form-control"
+                           @bind="licenseText" />
+
+                    <div class="form-text mb-3">
+                        Comma-separated values, for example E3, MCOEV.
+                        AD sync recalculates E3, E5, and MCOEV.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button"
+                                class="btn btn-primary"
+                                @onclick="SaveGraph">
+                            @(graphExists ? "Save changes" : "Create user")
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                disabled="@(!graphExists)"
+                                @onclick="DeleteGraph">
+                            Delete Graph user
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Microsoft Teams</h2>
+
+                    <p class="text-break">
+                        @teamsDraft.Upn
+                        <span class="badge text-bg-secondary ms-1">
+                            @(teamsExists ? "Existing" : "New")
+                        </span>
+                    </p>
+
+                    <div class="form-check mb-3">
+                        <input id="teams-voice"
+                               type="checkbox"
+                               class="form-check-input"
+                               @bind="teamsDraft.EnterpriseVoiceEnabled" />
+
+                        <label for="teams-voice"
+                               class="form-check-label">
+                            Enterprise voice enabled
+                        </label>
+                    </div>
+
+                    <label for="teams-phone" class="form-label">
+                        Phone number
+                    </label>
+
+                    <input id="teams-phone"
+                           class="form-control mb-3"
+                           inputmode="numeric"
+                           @bind="phoneText"
+                           placeholder="6139431002" />
+
+                    <label for="teams-policy" class="form-label">
+                        Calling policy
+                    </label>
+
+                    <input id="teams-policy"
+                           class="form-control"
+                           @bind="teamsDraft.CallingPolicyName" />
+
+                    <div class="form-text mb-3">
+                        Leave phone number or calling policy blank to clear it.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button"
+                                class="btn btn-primary"
+                                @onclick="SaveTeams">
+                            @(teamsExists ? "Save changes" : "Create user")
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                disabled="@(!teamsExists)"
+                                @onclick="DeleteTeams">
+                            Delete Teams user
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private string lookupUpn = "John.Doe@home.net";
+
+    private MsGraphUser? graphDraft;
+    private MsTeamsUser? teamsDraft;
+
+    private bool graphExists;
+    private bool teamsExists;
+
+    private string licenseText = "";
+    private string phoneText = "";
+
+    private string? message;
+    private bool isError;
+
+    private IReadOnlyList<DirectorySyncResult>? syncResults;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private bool formattingStarting;
+
+    private bool resettingPipelines;
+
+    private async Task StartFormattingAsync()
+    {
+        if (formattingStarting || resettingPipelines)
+        {
+            return;
+        }
+
+        formattingStarting = true;
+        isError = false;
+        message = null;
+
+        try
+        {
+            var authentication = AuthenticationStateTask is null
+                ? null
+                : await AuthenticationStateTask;
+
+            var name = authentication?.User.Identity?.Name;
+
+            var createdBy = string.IsNullOrWhiteSpace(name)
+                ? "Simulator"
+                : name;
+
+            var request = FormattingPipeline.Build(createdBy);
+            var run = await PipelineRuntime.EnqueueAsync(request);
+
+            Navigation.NavigateTo($"/pipeline-runs/{run.Id}");
+        }
+        catch (Exception exception)
+        {
+            isError = true;
+            message = $"Could not start formatting samples: {exception.Message}";
+        }
+        finally
+        {
+            formattingStarting = false;
+        }
+    }
+
+    private async Task ResetPipelinesAsync()
+    {
+        if (resettingPipelines || formattingStarting)
+        {
+            return;
+        }
+
+        resettingPipelines = true;
+        isError = false;
+        message = null;
+
+        try
+        {
+            var deletedRuns = await PipelineReset.ResetAsync();
+
+            message = deletedRuns == 0
+                ? "There were no pipeline records to delete."
+                : $"Deleted {deletedRuns} pipeline run(s) and all related records.";
+        }
+        catch (Exception exception)
+        {
+            isError = true;
+            message = $"Could not reset pipeline records: {exception.Message}";
+        }
+        finally
+        {
+            resettingPipelines = false;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Load();
+    }
+
+    private void Load() => Run(() =>
+    {
+        var upn = lookupUpn.Trim();
+
+        if (upn.Length == 0)
+            throw new ArgumentException("Enter a UPN.");
+
+        graphDraft = SimulatorSvc.GetGraphUser(upn);
+        graphExists = graphDraft is not null;
+        graphDraft ??= new MsGraphUser
+        {
+            Upn = upn,
+            Enabled = true
+        };
+
+        teamsDraft = SimulatorSvc.GetTeamsUser(upn);
+        teamsExists = teamsDraft is not null;
+        teamsDraft ??= new MsTeamsUser { Upn = upn };
+
+        licenseText = string.Join(", ", graphDraft.Licenses);
+
+        phoneText = teamsDraft.PhoneNumber?.ToString(
+            CultureInfo.InvariantCulture) ?? "";
+
+        message = $"Loaded simulator records for {upn}.";
+    });
+
+    private void Sync() => Run(() =>
+    {
+        syncResults = SimulatorSvc.SyncFromAd();
+
+        message =
+            $"Sync completed for {syncResults.Count} AD users. " +
+            "Load the user again to refresh the editors. " +
+            "Active pipelines will observe changes on their next poll.";
+    });
+
+    private void SaveGraph() => Run(() =>
+    {
+        var draft = graphDraft
+            ?? throw new InvalidOperationException("Load a user first.");
+
+        draft.Licenses = licenseText.Split(
+            ',',
+            StringSplitOptions.TrimEntries |
+            StringSplitOptions.RemoveEmptyEntries);
+
+        SimulatorSvc.SaveGraphUser(draft, create: !graphExists);
+
+        graphDraft = SimulatorSvc.GetGraphUser(draft.Upn)!;
+        graphExists = true;
+        licenseText = string.Join(", ", graphDraft.Licenses);
+
+        message = $"Saved Graph user {draft.Upn}.";
+    });
+
+    private void SaveTeams() => Run(() =>
+    {
+        var draft = teamsDraft
+            ?? throw new InvalidOperationException("Load a user first.");
+
+        if (string.IsNullOrWhiteSpace(phoneText))
+        {
+            draft.PhoneNumber = null;
+        }
+        else
+        {
+            if (!ulong.TryParse(
+                phoneText.Trim(),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var phone))
+            {
+                throw new ArgumentException(
+                    "Phone number must contain digits only, or be blank.");
+            }
+
+            draft.PhoneNumber = phone;
+        }
+
+        SimulatorSvc.SaveTeamsUser(draft, create: !teamsExists);
+
+        teamsDraft = SimulatorSvc.GetTeamsUser(draft.Upn)!;
+        teamsExists = true;
+
+        message = $"Saved Teams user {draft.Upn}.";
+    });
+
+    private void DeleteGraph() => Run(() =>
+    {
+        var upn = graphDraft?.Upn
+            ?? throw new InvalidOperationException("Load a user first.");
+
+        var removed = SimulatorSvc.DeleteGraphUser(upn);
+
+        graphDraft = new MsGraphUser { Upn = upn, Enabled = true };
+        graphExists = false;
+        licenseText = "";
+
+        message = removed
+            ? $"Deleted Graph user {upn}."
+            : $"Graph user {upn} was already absent.";
+    });
+
+    private void DeleteTeams() => Run(() =>
+    {
+        var upn = teamsDraft?.Upn
+            ?? throw new InvalidOperationException("Load a user first.");
+
+        var removed = SimulatorSvc.DeleteTeamsUser(upn);
+
+        teamsDraft = new MsTeamsUser { Upn = upn };
+        teamsExists = false;
+        phoneText = "";
+
+        message = removed
+            ? $"Deleted Teams user {upn}."
+            : $"Teams user {upn} was already absent.";
+    });
+
+    private void Run(Action action)
+    {
+        isError = false;
+        message = null;
+
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+            when (exception is ArgumentException or InvalidOperationException)
+        {
+            isError = true;
+            message = exception.Message;
+        }
+    }
+}

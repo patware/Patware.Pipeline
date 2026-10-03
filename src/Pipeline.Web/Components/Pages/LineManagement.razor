@@ -1,0 +1,250 @@
+﻿@page "/lineManagment"
+@rendermode InteractiveServer
+
+@implements IAsyncDisposable
+
+@* @inject Pipeline.Web.Pipelines.AssignLineOrgEmployeePipeline AssignLineService *@
+
+@inject Pipeline.Web.Services.IMyPipelines MyPipelines
+@* @inject Pipeline.Web.Pipelines.DeassignLineOrgEmployeePipeline DeassignLineService *@
+@inject Pipeline.Web.Services.IActiveDirectory ActiveDirectoryService
+@inject Pipeline.Runtime.IPipelineRuntime Runtime
+
+<h3>LineManagement</h3>
+
+<div class="mb-3">
+    <label for="upn">UPN</label>
+    <select id="upn" class="form-select" @bind="upn">
+        <option value="">Select an employee</option>
+        @foreach (var user in users)
+        {
+            <option value="@user.UserPrincipalName">
+                @user.UserPrincipalName
+            </option>
+        }
+    </select>
+</div>
+
+<div class="mb-3">
+    <label for="phoneNumber">Phone number</label>
+    <input id="phoneNumber"
+           type="number"
+           class="form-control"
+           @bind="phoneNumber"
+           min="2000000000"
+           max="9999999999" />
+
+    <span>@phoneNumber.ToString("(000) 000-0000")</span>
+</div>
+
+<button class="btn btn-primary" disabled="@(!CanSubmit)" @onclick="AssignLine">Assign line</button>
+@* <button class="btn btn-secondary" disabled="@(!CanSubmit)" @onclick="DeassignLine">Deassign line</button> *@
+
+@if (error is not null)
+{
+    <p class="text-danger" role="alert">@error</p>
+}
+
+<table class="table mt-3">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Created</th>
+            <th>Created by</th>
+            <th>Status</th>
+            <th>Progress and logs</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var run in runs)
+        {
+            <tr @key="run.Id">
+                <td>@run.Id</td>
+                <td>
+                    <a href="@($"pipeline-runs/{run.Id}")">@run.Title</a>
+                </td>
+                <td>@run.CreatedAt.ToLocalTime().ToString("g")</td>
+                <td>@run.CreatedBy</td>
+                <td>@run.Status</td>
+                <td>
+                    <div>@run.StatusText</div>
+
+                    <details>
+                        <summary>Logs (@run.Logs.Count)</summary>
+                        <ul>
+                            @foreach (var entry in run.Logs)
+                            {
+                                <li>
+                                    @entry.Timestamp.ToLocalTime().ToString("T")
+                                    — @entry.Message
+                                </li>
+                            }
+                        </ul>
+                    </details>
+                </td>
+            </tr>
+        }
+
+        @if (runs.Count == 0)
+        {
+            <tr>
+                <td colspan="6">No runs submitted from this page yet.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@code {
+    private IList<DTO.AdUser> users = [];
+    private IReadOnlyList<Runtime.PipelineRun> runs = [];
+    private readonly HashSet<Guid> createdRunIds = [];
+
+    private string? upn;
+    private ulong phoneNumber = 6135550000;
+    private string? error;
+    private bool submitting;
+
+    private CancellationTokenSource refreshCancellation = new();
+    private Task? refreshTask;
+
+    private readonly SemaphoreSlim refreshGate = new(1, 1);
+
+    private bool CanSubmit =>
+       !submitting &&
+       !string.IsNullOrWhiteSpace(upn) &&
+       phoneNumber is >= 2000000000UL and <= 9999999999UL;
+
+    protected async override Task OnInitializedAsync()
+    {
+        users = (await ActiveDirectoryService.GetUsersAsync()).ToList();
+
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            refreshTask = RefreshRunsAsync(refreshCancellation.Token);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // private Task AssignLine() => SubmitAsync(() => AssignLineService.AssignLine(upn!, phoneNumber));
+    private Task AssignLine() => SubmitAsync(() => MyPipelines.AssignLineEmployee(upn!, phoneNumber));
+    // private Task DeassignLine() => SubmitAsync(() => DeassignLineService.DeassignLine(upn!, phoneNumber));
+
+    private async Task SubmitAsync(
+        Func<Task<Runtime.PipelineRun>> submit)
+    {
+        if (!CanSubmit)
+            return;
+
+        submitting = true;
+        error = null;
+
+        try
+        {
+            var createdRun = await submit();
+            createdRunIds.Add(createdRun.Id);
+            await LoadRunsAsync(refreshCancellation.Token);
+        }
+        catch (Exception exception)
+        {
+            error = exception.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private async Task RefreshRunsAsync(
+        CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(
+            TimeSpan.FromSeconds(20));
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
+
+                    await LoadRunsAsync(cancellationToken);
+
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        StateHasChanged();
+                    }
+                });
+            }
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            // The page was disposed.
+        }
+    }
+
+    private async Task LoadRunsAsync(CancellationToken cancellationToken)
+    {
+        await refreshGate.WaitAsync(cancellationToken);
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var snapshots = new List<Pipeline.Runtime.PipelineRun>();
+
+            // Copy before awaiting: another submission may add an ID.
+            foreach (var id in createdRunIds.ToArray())
+            {
+                var snapshot = await Runtime.GetRunAsync(id, cancellationToken);
+
+                if (snapshot is not null)
+                {
+                    snapshots.Add(snapshot);
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            runs = snapshots
+                .OrderByDescending(run => run.CreatedAt)
+                .ThenBy(run => run.Id)
+                .ToArray();
+        }
+        finally
+        {
+            refreshGate.Release();
+        }
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        refreshCancellation.Cancel();
+
+        try
+        {
+            if (refreshTask is not null)
+            {
+                await refreshTask;
+            }
+
+            await refreshGate.WaitAsync();
+            refreshGate.Release();
+        }
+        finally
+        {
+            refreshCancellation.Dispose();
+        }
+    }
+
+}
