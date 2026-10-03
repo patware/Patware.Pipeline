@@ -89,7 +89,7 @@ The complete demo also polls for enterprise voice enablement after applying the 
 | [Pipeline.Hangfire](src/Pipeline.Hangfire) | Hangfire processing, scheduled work, and startup recovery of unfinished runs. |
 | [Pipeline.Blazor](src/Pipeline.Blazor) | Run overview and detail pages, job cards, periodically refreshed progress, and ANSI-formatted logs. |
 
-The libraries currently target **.NET 10**. This repository contains their source and a working demo host; published NuGet package IDs and release versions will be documented when available.
+The libraries currently target **.NET 10**. [Patware.Pipeline.Core 0.1.0](https://www.nuget.org/packages/Patware.Pipeline.Core/0.1.0) is published on NuGet.org. The companion libraries are available as source in this repository, alongside a working demo host; their NuGet releases have not yet been published.
 
 ## Your first run
 
