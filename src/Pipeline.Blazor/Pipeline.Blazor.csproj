@@ -5,11 +5,23 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>Patware.Pipeline.Blazor</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Patware</Authors>
+    <Description>Bring .NET workflows into view with Blazor pages for pipeline run history, job and step progress, formatted logs, and retry controls.</Description>
+    <PackageTags>pipeline;dotnet;blazor</PackageTags>
+    <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
-
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <ItemGroup>
