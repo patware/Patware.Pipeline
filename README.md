@@ -138,20 +138,71 @@ For your own workflow, register its step services and an `IPipelineDefinitionReg
 
 ## Start small. Add persistence and scheduling when you need them.
 
-Select SQL Server persistence and Hangfire processing in the same registration callback:
+Persistence and processing are independent choices. Choose **one** of the four
+registrations below for your application. Use these namespaces for the options
+you select:
 
 ```csharp
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Pipeline.Hangfire;
 using Pipeline.Persistence.EntityFrameworkCore;
 using Pipeline.Runtime;
-
-builder.Services.AddPipeline(options =>
-    options
-        .UseSqlServer(connectionString)
-        .UseHangfire());
 ```
 
-Persistence and processing are independent choices:
+### Option 1: Built-in processor + in-memory persistence
+
+The defaults use `PipelineRuntime` with the built-in background worker and
+in-memory persistence:
+
+```csharp
+builder.Services.AddPipeline();
+```
+
+### Option 2: Hangfire processor + in-memory persistence
+
+```csharp
+builder.Services.AddPipeline(options =>
+{
+    options.UseHangfire();
+});
+```
+
+### Configure the connection string for options 3 and 4
+
+Read and validate the connection string before registering either SQL Server
+option:
+
+```csharp
+var connectionString = builder.Configuration.GetConnectionString("Pipeline");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'Pipeline' is missing.");
+}
+```
+
+### Option 3: Built-in processor + SQL Server persistence
+
+```csharp
+builder.Services.AddPipeline(options =>
+{
+    options.UseSqlServer(connectionString: connectionString);
+});
+```
+
+### Option 4: Hangfire processor + SQL Server persistence
+
+```csharp
+builder.Services.AddPipeline(options =>
+{
+    options
+        .UseSqlServer(connectionString: connectionString)
+        .UseHangfire();
+});
+```
+
+At a glance:
 
 | Storage | Processing | Configuration inside `AddPipeline` |
 | --- | --- | --- |
