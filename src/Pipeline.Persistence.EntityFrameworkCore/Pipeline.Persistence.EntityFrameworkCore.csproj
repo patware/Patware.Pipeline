@@ -1,11 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Patware.Pipeline.Persistence.EntityFrameworkCore</PackageId>
-    <Version>0.1.0</Version>
     <Authors>Patware</Authors>
     <Description>Persist .NET workflow history and execution state in SQL Server with Entity Framework Core persistence for pipeline runs, step outputs, and logs.</Description>
     <PackageTags>pipeline;dotnet;entityframeworkcore;sqlserver;persistence</PackageTags>

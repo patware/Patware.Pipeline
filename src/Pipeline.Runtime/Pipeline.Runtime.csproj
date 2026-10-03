@@ -1,11 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Patware.Pipeline.Runtime</PackageId>
-    <Version>0.1.0</Version>
     <Authors>Patware</Authors>
     <Description>The runtime for the composable pipeline library for .NET.</Description>
     <PackageTags>pipeline;dotnet</PackageTags>

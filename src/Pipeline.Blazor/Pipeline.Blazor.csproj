@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -6,7 +6,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>Patware.Pipeline.Blazor</PackageId>
-    <Version>0.1.0</Version>
     <Authors>Patware</Authors>
     <Description>Bring .NET workflows into view with Blazor pages for pipeline run history, job and step progress, formatted logs, and retry controls.</Description>
     <PackageTags>pipeline;dotnet;blazor</PackageTags>

@@ -482,3 +482,11 @@ $RECYCLE.BIN/
 *.swp
 
 
+
+# Repository outputs and local environment overrides
+/artifacts/
+/doc/_site/
+/doc/api/
+.env.*
+!.env.example
+!.env.sample

@@ -1,11 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Patware.Pipeline.Hangfire</PackageId>
-    <Version>0.1.0</Version>
     <Authors>Patware</Authors>
     <Description>Power .NET workflows with Hangfire processing, scheduled polling, and recovery of unfinished pipeline runs using in-memory or SQL Server storage.</Description>
     <PackageTags>pipeline;dotnet;hangfire;background-jobs;workflow</PackageTags>

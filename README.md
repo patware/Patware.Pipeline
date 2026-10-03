@@ -201,6 +201,7 @@ Open the application URL printed by the host and visit `/simulator`. Follow subm
 ```powershell
 dotnet restore Pipeline.slnx
 dotnet build Pipeline.slnx
+dotnet test Pipeline.slnx
 ```
 
 Explore the [documentation overview](doc/index.md), or generate the API documentation with DocFX:
@@ -210,6 +211,16 @@ docfx doc/docfx.json --serve
 ```
 
 Have a workflow that would make a great example? Found a rough edge? Open an issue with the process you’re trying to model, the behavior you expected, and a minimal reproduction when possible. Pull requests are welcome.
+
+The SDK is selected by [global.json](global.json). Visual Studio users can import
+[.vsconfig](.vsconfig) to install the web development workload. The shared build
+version comes from [VERSION](VERSION).
+
+See the [contribution guide](CONTRIBUTING.md), [branch guide](branch-guide.md),
+[test guide](tests/README.md), and [changelog](CHANGELOG.md) for development details.
+For help, see [support](SUPPORT.md). Participation follows the
+[Code of Conduct](CODE_OF_CONDUCT.md); report vulnerabilities using the
+[security policy](SECURITY.md).
 
 ## License
 

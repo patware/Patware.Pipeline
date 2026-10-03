@@ -1,7 +1,35 @@
 <Solution>
+  <Folder Name="/doc/">
+    <File Path="doc/.gitignore" />
+    <File Path="doc/docfx.json" />
+    <File Path="doc/index.md" />
+    <File Path="doc/toc.yml" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path=".vsconfig" />
+    <File Path="branch-guide.md" />
+    <File Path="CHANGELOG.md" />
+    <File Path="CODEOWNERS" />
+    <File Path="CODE_OF_CONDUCT.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="dotnet-tools.json" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
     <File Path="README.md" />
+    <File Path="SECURITY.md" />
+    <File Path="SUPPORT.md" />
+    <File Path="VERSION" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pipeline.Blazor.Tests/Pipeline.Blazor.Tests.csproj" />
+    <Project Path="tests/Pipeline.Core.Tests/Pipeline.Core.Tests.csproj" />
+    <Project Path="tests/Pipeline.Hangfire.Tests/Pipeline.Hangfire.Tests.csproj" />
+    <Project Path="tests/Pipeline.Persistence.EntityFrameworkCore.Tests/Pipeline.Persistence.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj" />
   </Folder>
   <Project Path="src/Pipeline.Blazor/Pipeline.Blazor.csproj" Id="febb32a3-ea44-49ea-b896-28ccfa23a807" />
   <Project Path="src/Pipeline.Core/Pipeline.Core.csproj" Id="adcad8b8-e3a8-47aa-8ca4-72c767089a81" />
@@ -9,11 +37,4 @@
   <Project Path="src/Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj" Id="b39031c0-5975-4ccf-b141-d1f4d6857c80" />
   <Project Path="src/Pipeline.Runtime/Pipeline.Runtime.csproj" Id="e773e4c0-2857-4c7f-8517-91979e77b53e" />
   <Project Path="src/Pipeline.Web/Pipeline.Web.csproj" />
-  <Folder Name="/tests/">
-    <Project Path="tests/Pipeline.Core.Tests/Pipeline.Core.Tests.csproj" />
-    <Project Path="tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj" />
-    <Project Path="tests/Pipeline.Hangfire.Tests/Pipeline.Hangfire.Tests.csproj" />
-    <Project Path="tests/Pipeline.Persistence.EntityFrameworkCore.Tests/Pipeline.Persistence.EntityFrameworkCore.Tests.csproj" />
-    <Project Path="tests/Pipeline.Blazor.Tests/Pipeline.Blazor.Tests.csproj" />
-  </Folder>
 </Solution>
