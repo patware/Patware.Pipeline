@@ -91,6 +91,24 @@ The complete demo also polls for enterprise voice enablement after applying the 
 
 The libraries currently target **.NET 10**. [Patware.Pipeline.Core 0.1.0](https://www.nuget.org/packages/Patware.Pipeline.Core/0.1.0) is published on NuGet.org. The companion libraries are available as source in this repository, alongside a working demo host; their NuGet releases have not yet been published.
 
+### Package dependencies
+
+Arrows point from a package to its direct dependencies within the five-package
+Pipeline family. External dependencies are omitted.
+
+```mermaid
+flowchart TD
+    Blazor["Patware.Pipeline.Blazor"] --> Runtime["Patware.Pipeline.Runtime"]
+    Blazor --> Core["Patware.Pipeline.Core"]
+    Hangfire["Patware.Pipeline.Hangfire"] --> Runtime
+    Persistence["Patware.Pipeline.Persistence.EntityFrameworkCore"] --> Runtime
+    Runtime --> Core
+```
+
+Runtime brings in Core transitively for Hangfire and Entity Framework Core
+persistence. Blazor references both Runtime and Core directly. Choose the
+processing, persistence, and UI packages independently to suit your application.
+
 ## Your first run
 
 Start with the included log-formatting pipeline to see registration, submission, and execution without writing a definition first.
