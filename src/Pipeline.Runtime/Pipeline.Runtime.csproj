@@ -8,7 +8,10 @@
     <Authors>Patware</Authors>
     <Description>The runtime for the composable pipeline library for .NET.</Description>
     <PackageTags>pipeline;dotnet</PackageTags>
+    <PackageReleaseNotes>Initial release with dependency injection registration, queued workflow execution through a built-in background worker, in-memory persistence, run and step status queries, execution logs, versioned workflow restoration, and retry from failure while preserving completed steps and outputs.</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
+    <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

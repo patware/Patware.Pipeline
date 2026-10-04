@@ -8,7 +8,10 @@
     <Authors>Patware</Authors>
     <Description>Persist .NET workflow history and execution state in SQL Server with Entity Framework Core persistence for pipeline runs, step outputs, and logs.</Description>
     <PackageTags>pipeline;dotnet;entityframeworkcore;sqlserver;persistence</PackageTags>
+    <PackageReleaseNotes>Initial release with SQL Server persistence through Entity Framework Core for workflow run history, versioned requests, job and step execution state, step outputs, and scoped logs. Includes UseSqlServer registration, transactional updates, and optimistic concurrency checks. Database migrations are managed by the host application.</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
+    <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
