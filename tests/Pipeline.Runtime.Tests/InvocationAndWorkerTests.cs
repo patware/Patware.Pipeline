@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using Pipeline.Core;
 using Pipeline.Core.Pipelines;
 using Pipeline.Runtime.Pipelines;
@@ -18,6 +19,10 @@ public class InvocationAndWorkerTests
             await logger.WarningAsync("warning", token);
             await logger.ErrorAsync("error", token);
         }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "Performance",
+            "CA1822:Mark members as static",
+            Justification = "Intentionally models an instance pipeline step to test synchronous exception propagation.")]
         public Task Throw(CancellationToken token) => throw new ApplicationException("original exception");
     }
 
@@ -97,16 +102,31 @@ public class InvocationAndWorkerTests
         using var gate = new PipelineOperationGate();
         using var cancel = new CancellationTokenSource();
         var execution = Substitute.For<IPipelineExecutionStore>();
+
         execution.ListActiveRunIdsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
         {
             cancel.Cancel();
             return Task.FromException<IReadOnlyList<Guid>>(new InvalidOperationException("offline"));
         });
-        var runtime = new PipelineRuntime(Substitute.For<IPipelineStore>(), execution,
-            Substitute.For<IServiceScopeFactory>(), TimeProvider.System, NullLogger<PipelineRuntime>.Instance, gate);
+
+        var runtime = new PipelineRuntime(
+            Substitute.For<IPipelineStore>(),
+            execution,
+            Substitute.For<IServiceScopeFactory>(),
+            TimeProvider.System,
+            NullLogger<PipelineRuntime>.Instance,
+            gate,
+            new PipelineRunEventQueue());
+
         await runtime.RunAsync(cancel.Token);
+
         await execution.Received(1).ListActiveRunIdsAsync(cancel.Token);
-        await FluentActions.Awaiting(() => runtime.RunAsync(default)).Should().ThrowAsync<InvalidOperationException>().WithMessage("*already been started*");
+
+        await FluentActions
+            .Awaiting(() => runtime.RunAsync(default))
+            .Should()
+            .ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already been started*");
     }
 }
 

@@ -1,4 +1,4 @@
-﻿namespace Pipeline.Runtime;
+namespace Pipeline.Runtime;
 
 /// <summary>
 /// Reopens failed runs while preserving successful steps, their outputs, and the existing log history.
@@ -8,11 +8,15 @@
 /// <param name="pipelineStore">The store supplying run metadata and restoration specifications.</param>
 /// <param name="definitions">The registry restoring the original versioned execution plan.</param>
 /// <param name="operationGate">The shared process-local gate coordinating execution with reset, retry, and submission.</param>
+/// <param name="events">Event Publication</param>
+/// <param name="timeProvider">Abstraction for time</param>
 public sealed class PipelineRetryService(
     IPipelineExecutionStore executionStore,
     IPipelineStore pipelineStore,
     IPipelineDefinitionRegistry definitions,
-    PipelineOperationGate operationGate)
+    PipelineOperationGate operationGate,
+    PipelineRunEventQueue events,
+    TimeProvider timeProvider)
 {
     /// <summary>
     /// Reopens a failed run for unfinished work, preserving successful steps and outputs, skipped jobs, bound arguments, and logs.
@@ -97,11 +101,22 @@ public sealed class PipelineRetryService(
                     }).ToArray()
         };
 
-        return await executionStore.TrySaveAsync(
+        var saved = await executionStore.TrySaveAsync(
             replacement,
             expectedRunRevision: snapshot.Run.Revision,
             message: "Manual retry requested. Successful work preserved.",
             requiredClaim: null,
             cancellationToken: cancellationToken);
+
+        if (saved)
+        {
+            events.Publish(
+                replacement.Run,
+                PipelineRunEventKind.RetryRequested,
+                checked(snapshot.Run.Revision + 1),
+                timeProvider.GetUtcNow());
+        }
+
+        return saved;
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 using Pipeline.Core;
 
@@ -19,6 +19,7 @@ namespace Pipeline.Runtime;
 /// <param name="invoker">The invoker resolving and calling step services.</param>
 /// <param name="timeProvider">The clock used for timestamps, polling deadlines, or lease validity.</param>
 /// <param name="operationGate">The shared process-local gate coordinating execution with reset, retry, and submission.</param>
+/// <param name="events">Event Publication</param>
 public sealed class PipelineExecutionCoordinator(
     IPipelineStore pipelineStore,
     IPipelineExecutionStore executionStore,
@@ -26,7 +27,8 @@ public sealed class PipelineExecutionCoordinator(
     IStepArgumentBinder binder,
     IStepInvoker invoker,
     TimeProvider timeProvider,
-    PipelineOperationGate operationGate)
+    PipelineOperationGate operationGate,
+    PipelineRunEventQueue events)
 {
     private static readonly TimeSpan LeaseDuration =
         TimeSpan.FromMinutes(2);
@@ -177,7 +179,8 @@ public sealed class PipelineExecutionCoordinator(
                     }
                 },
                 "Pipeline execution started.",
-                cancellationToken);
+                cancellationToken,
+                lifecycleEvent: PipelineRunEventKind.Started);
         }
 
         // Finish failure propagation before attempting more work.
@@ -229,7 +232,8 @@ public sealed class PipelineExecutionCoordinator(
                     }
                 },
                 message,
-                cancellationToken);
+                cancellationToken,
+                lifecycleEvent: PipelineRunEventKind.Failed);
         }
 
         if (snapshot.Jobs.All(job => IsSuccessful(job.Status)))
@@ -245,7 +249,8 @@ public sealed class PipelineExecutionCoordinator(
                     }
                 },
                 "Pipeline execution completed.",
-                cancellationToken);
+                cancellationToken,
+                lifecycleEvent: PipelineRunEventKind.Completed);
         }
 
         foreach (var jobDefinition in plan.Jobs)
@@ -301,7 +306,8 @@ public sealed class PipelineExecutionCoordinator(
                     },
                     message,
                     cancellationToken,
-                    jobId: job.JobId);
+                    jobId: job.JobId,
+                    lifecycleEvent: PipelineRunEventKind.Failed);
             }
 
             var ready = dependencies.All(item =>
@@ -348,7 +354,8 @@ public sealed class PipelineExecutionCoordinator(
                         },
                         message,
                         cancellationToken,
-                        jobId: job.JobId);
+                        jobId: job.JobId,
+                        lifecycleEvent: PipelineRunEventKind.Failed);
                 }
 
                 return await SaveAsync(
@@ -534,8 +541,8 @@ public sealed class PipelineExecutionCoordinator(
 
         var renewal = RenewAsync(
             claim,
-            renewalStop.Token,
-            leaseLost);
+            leaseLost,
+            renewalStop.Token);
 
         StepInvocationResult? result = null;
         Exception? failure = null;
@@ -665,8 +672,8 @@ public sealed class PipelineExecutionCoordinator(
 
     private async Task RenewAsync(
         StepClaim claim,
-        CancellationToken cancellationToken,
-        CancellationTokenSource leaseLost)
+        CancellationTokenSource leaseLost,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -755,34 +762,47 @@ public sealed class PipelineExecutionCoordinator(
         return false;
     }
 
-    private Task<bool> SaveAsync(
+    private async Task<bool> SaveAsync(
         PipelineExecutionSnapshot snapshot,
         string message,
         CancellationToken cancellationToken,
         PipelineLogLevel level = PipelineLogLevel.Information,
         string? jobId = null,
-        string? stepId = null)
+        string? stepId = null,
+        PipelineRunEventKind? lifecycleEvent = null)
     {
-        return executionStore.TrySaveAsync(
+        var expectedRevision = snapshot.Run.Revision;
+
+        var saved = await executionStore.TrySaveAsync(
             snapshot,
-            snapshot.Run.Revision,
+            expectedRevision,
             message,
             requiredClaim: null,
             cancellationToken: cancellationToken,
             level: level,
             jobId: jobId,
             stepId: stepId);
+
+        if (saved && lifecycleEvent is { } kind)
+        {
+            events.Publish(
+                snapshot.Run,
+                kind,
+                checked(expectedRevision + 1),
+                timeProvider.GetUtcNow());
+        }
+
+        return saved;
     }
 
     private static PipelineExecutionSnapshot ReplaceJob(PipelineExecutionSnapshot snapshot, JobExecutionState replacement)
     {
         return snapshot with
         {
-            Jobs = snapshot.Jobs
+            Jobs = [.. snapshot.Jobs
                 .Select(job => job.JobId == replacement.JobId
                     ? replacement
-                    : job)
-                .ToArray()
+                    : job)]
         };
     }
 
@@ -790,13 +810,12 @@ public sealed class PipelineExecutionCoordinator(
     {
         return snapshot with
         {
-            Steps = snapshot.Steps
+            Steps = [.. snapshot.Steps
                 .Select(step =>
                     step.JobId == replacement.JobId &&
                     step.StepId == replacement.StepId
                         ? replacement
-                        : step)
-                .ToArray()
+                        : step)]
         };
     }
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Pipeline.Core;
@@ -81,22 +81,18 @@ public static class PipelineServiceCollectionExtensions
     {
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
 
-        services.TryAddSingleton<
-            IPipelineBuilderFactory,
-            PipelineBuilderFactory>();
+        services.TryAddSingleton<IPipelineBuilderFactory, PipelineBuilderFactory>();
 
         services.TryAddSingleton<PipelineOperationGate>();
 
         // Both processors use this service for submission and queries.
         services.TryAddSingleton<PipelineRuntime>();
 
-        services.TryAddScoped<
-            IPipelineDefinitionRegistry,
-            PipelineDefinitionRegistry>();
+        services.TryAddSingleton<PipelineRunEventQueue>();
 
-        services.TryAddScoped<
-            IStepArgumentBinder,
-            StepArgumentBinder>();
+        services.TryAddScoped<IPipelineDefinitionRegistry, PipelineDefinitionRegistry>();
+
+        services.TryAddScoped<IStepArgumentBinder, StepArgumentBinder>();
 
         services.TryAddScoped<IStepInvoker, StepInvoker>();
 
@@ -104,10 +100,11 @@ public static class PipelineServiceCollectionExtensions
 
         services.TryAddScoped<PipelineStepLogger>();
 
-        services.TryAddScoped<IPipelineStepLogger>(provider =>
-            provider.GetRequiredService<PipelineStepLogger>());
+        services.TryAddScoped<IPipelineStepLogger>(provider => provider.GetRequiredService<PipelineStepLogger>());
 
         services.TryAddScoped<PipelineRetryService>();
+
+        services.AddHostedService<PipelineRunEventDispatcher>();
     }
 
     private static void RegisterInMemoryPersistence(

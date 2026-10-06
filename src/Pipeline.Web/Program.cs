@@ -65,6 +65,8 @@ builder.Services.AddSingleton<IMsTeams>(services => services.GetRequiredService<
 
 builder.Services.AddScoped<Pipeline.Web.Services.IMyPipelines, Pipeline.Web.Services.MyPipelines>();
 
+builder.Services.AddScoped<IPipelineRunEventHandler, PipelineRunNotificationHandler>();
+
 builder.Services.AddTransient<AssignLineEmployeeDefinition>();
 
 builder.Services.AddTransient<Pipeline.Runtime.IPipelineDefinitionRegistration, AssignLineEmployeeRegistration>();

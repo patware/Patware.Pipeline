@@ -1,8 +1,10 @@
-using Pipeline.Core;
 using global::Hangfire;
 using global::Hangfire.Common;
 using global::Hangfire.States;
+
 using Microsoft.Extensions.DependencyInjection;
+
+using Pipeline.Core;
 using Pipeline.Runtime;
 using Pipeline.Tests.Shared;
 
@@ -11,9 +13,9 @@ namespace Pipeline.Hangfire.Tests;
 [TestClass]
 public class HangfireTests
 {
-    private readonly IBackgroundJobClient client = Substitute.For<IBackgroundJobClient>();
-    private readonly IPipelineExecutionStore execution = Substitute.For<IPipelineExecutionStore>();
-    private readonly IPipelineStore store = Substitute.For<IPipelineStore>();
+    private readonly IBackgroundJobClient _client = Substitute.For<IBackgroundJobClient>();
+    private readonly IPipelineExecutionStore _execution = Substitute.For<IPipelineExecutionStore>();
+    private readonly IPipelineStore _store = Substitute.For<IPipelineStore>();
 
     [TestMethod]
     public async Task Recovery_dispatches_only_runs_still_active_with_recovery_flag()
@@ -21,22 +23,22 @@ public class HangfireTests
         var active = Samples.Run();
         var complete = Samples.Run() with { Status = PipelineStatus.Completed };
         var missing = Guid.NewGuid();
-        execution.ListActiveRunIdsAsync(default).Returns(new[] { active.Id, complete.Id, missing });
-        store.GetAsync(active.Id).Returns(active);
-        store.GetAsync(complete.Id).Returns(complete);
-        await new PipelineRecoveryJob(execution, store, client).ExecuteAsync(default);
-        client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob) && (Guid)j.Args[0] == active.Id && (string)j.Args[1] == active.Title && (bool)j.Args[2]), Arg.Any<EnqueuedState>());
-        client.Received(1).Create(Arg.Any<Job>(), Arg.Any<IState>());
+        _execution.ListActiveRunIdsAsync(default).Returns([active.Id, complete.Id, missing]);
+        _store.GetAsync(active.Id).Returns(active);
+        _store.GetAsync(complete.Id).Returns(complete);
+        await new PipelineRecoveryJob(_execution, _store, _client).ExecuteAsync(default);
+        _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob) && (Guid)j.Args[0] == active.Id && (string)j.Args[1] == active.Title && (bool)j.Args[2]), Arg.Any<EnqueuedState>());
+        _client.Received(1).Create(Arg.Any<Job>(), Arg.Any<IState>());
     }
 
     [TestMethod]
     public async Task Startup_registers_minutely_recovery_and_immediate_discovery()
     {
         var recurring = Substitute.For<IRecurringJobManager>();
-        var startup = new PipelineHangfireStartupService(recurring, client);
+        var startup = new PipelineHangfireStartupService(recurring, _client);
         await startup.StartAsync(default);
         recurring.Received(1).AddOrUpdate("pipeline-recovery", Arg.Is<Job>(j => j.Type == typeof(PipelineRecoveryJob)), "* * * * *", Arg.Any<RecurringJobOptions>());
-        client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRecoveryJob)), Arg.Any<EnqueuedState>());
+        _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRecoveryJob)), Arg.Any<EnqueuedState>());
         await startup.StopAsync(default);
     }
 
@@ -44,24 +46,25 @@ public class HangfireTests
     public async Task Cancelled_startup_does_not_dispatch()
     {
         var recurring = Substitute.For<IRecurringJobManager>();
-        var startup = new PipelineHangfireStartupService(recurring, client);
+        var startup = new PipelineHangfireStartupService(recurring, _client);
         Func<Task> start = () => startup.StartAsync(new CancellationToken(true));
         await start.Should().ThrowAsync<OperationCanceledException>();
-        client.ReceivedCalls().Should().BeEmpty();
+        _client.ReceivedCalls().Should().BeEmpty();
         recurring.ReceivedCalls().Should().BeEmpty();
     }
 
     [TestMethod]
-    [DataRow(false)] [DataRow(true)]
+    [DataRow(false)]
+    [DataRow(true)]
     public async Task Enqueue_persists_run_even_when_dispatch_fails(bool failDispatch)
     {
         using var provider = Services();
-        if (failDispatch) client.Create(Arg.Any<Job>(), Arg.Any<IState>()).Returns(_ => throw new InvalidOperationException("offline"));
+        if (failDispatch) _client.Create(Arg.Any<Job>(), Arg.Any<IState>()).Returns(_ => throw new InvalidOperationException("offline"));
         var runtime = provider.GetRequiredService<IPipelineRuntime>();
         var run = await runtime.EnqueueAsync(Samples.Request());
         (await runtime.GetRunAsync(run.Id)).Should().BeEquivalentTo(run);
         (await runtime.GetRunsAsync()).Should().ContainSingle().Which.Id.Should().Be(run.Id);
-        client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob) && (Guid)j.Args[0] == run.Id && !(bool)j.Args[2]), Arg.Any<EnqueuedState>());
+        _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob) && (Guid)j.Args[0] == run.Id && !(bool)j.Args[2]), Arg.Any<EnqueuedState>());
         await runtime.Awaiting(x => x.RunAsync(default)).Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -71,13 +74,13 @@ public class HangfireTests
         using var provider = Services();
         var runtime = provider.GetRequiredService<IPipelineRuntime>();
         var run = await runtime.EnqueueAsync(Samples.Request());
-        client.ClearReceivedCalls();
+        _client.ClearReceivedCalls();
         using var scope = provider.CreateScope();
         await scope.ServiceProvider.GetRequiredService<PipelineRunJob>().ExecuteAsync(run.Id, run.Title, false, default);
-        client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineStepJob) && (string)j.Args[2] == "job" && (string)j.Args[3] == "step" && (int)j.Args[4] == 1), Arg.Any<EnqueuedState>());
-        client.ClearReceivedCalls();
+        _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineStepJob) && (string)j.Args[2] == "job" && (string)j.Args[3] == "step" && (int)j.Args[4] == 1), Arg.Any<EnqueuedState>());
+        _client.ClearReceivedCalls();
         await scope.ServiceProvider.GetRequiredService<PipelineStepJob>().ExecuteAsync(run.Id, run.Title, "job", "step", 1, default);
-        client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob)), Arg.Any<EnqueuedState>());
+        _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob)), Arg.Any<EnqueuedState>());
         (await runtime.GetExecutionAsync(run.Id))!.Steps[0].Status.Should().Be(StepExecutionStatus.Succeeded);
     }
 
@@ -87,11 +90,12 @@ public class HangfireTests
         using var provider = Services();
         using var scope = provider.CreateScope();
         await scope.ServiceProvider.GetRequiredService<PipelineRunJob>().ExecuteAsync(Guid.NewGuid(), true, default);
-        client.ReceivedCalls().Should().BeEmpty();
+        _client.ReceivedCalls().Should().BeEmpty();
     }
 
     [TestMethod]
-    [DataRow(false)] [DataRow(true)]
+    [DataRow(false)]
+    [DataRow(true)]
     public async Task Waiting_run_schedules_due_time_but_recovery_does_not_duplicate_wakeup(bool recovery)
     {
         var clock = new TestClock();
@@ -108,10 +112,20 @@ public class HangfireTests
         }, 0, "waiting", null, default);
         var definitions = Substitute.For<IPipelineDefinitionRegistry>();
         definitions.Restore(Arg.Any<PipelineExecutionSpecification>()).Returns(Samples.Plan());
-        var coordinator = new PipelineExecutionCoordinator(memory, memory, definitions, Substitute.For<IStepArgumentBinder>(), Substitute.For<IStepInvoker>(), clock, gate);
-        await new PipelineRunJob(coordinator, memory, client, clock).ExecuteAsync(run.Id, run.Title, recovery, default);
-        if (recovery) client.ReceivedCalls().Should().BeEmpty();
-        else client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob)), Arg.Is<ScheduledState>(s => s.EnqueueAt == due.UtcDateTime));
+
+        var coordinator = new PipelineExecutionCoordinator(
+            memory,
+            memory,
+            definitions,
+            Substitute.For<IStepArgumentBinder>(),
+            Substitute.For<IStepInvoker>(),
+            clock,
+            gate,
+            new PipelineRunEventQueue());
+
+        await new PipelineRunJob(coordinator, memory, _client, clock).ExecuteAsync(run.Id, run.Title, recovery, default);
+        if (recovery) _client.ReceivedCalls().Should().BeEmpty();
+        else _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob)), Arg.Is<ScheduledState>(s => s.EnqueueAt == due.UtcDateTime));
     }
 
     [TestMethod]
@@ -120,27 +134,29 @@ public class HangfireTests
         using var provider = Services();
         var runtime = provider.GetRequiredService<IPipelineRuntime>();
         var run = await runtime.EnqueueAsync(Samples.Request());
-        client.ClearReceivedCalls();
+        _client.ClearReceivedCalls();
         (await runtime.RetryAsync(run.Id)).Should().BeFalse();
-        client.ReceivedCalls().Should().BeEmpty();
+        _client.ReceivedCalls().Should().BeEmpty();
         var store = provider.GetRequiredService<IPipelineStore>();
         await store.TryUpdateAsync(run with { Revision = 1, Status = PipelineStatus.Failed }, 0);
         (await runtime.RetryAsync(run.Id)).Should().BeTrue();
-        client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob) && (Guid)j.Args[0] == run.Id), Arg.Any<EnqueuedState>());
+        _client.Received(1).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineRunJob) && (Guid)j.Args[0] == run.Id), Arg.Any<EnqueuedState>());
     }
     [TestMethod]
-    [DataRow(PipelineStatus.Completed)] [DataRow(PipelineStatus.Failed)] [DataRow(PipelineStatus.Cancelled)]
+    [DataRow(PipelineStatus.Completed)]
+    [DataRow(PipelineStatus.Failed)]
+    [DataRow(PipelineStatus.Cancelled)]
     public async Task Terminal_run_jobs_do_not_dispatch_more_work(PipelineStatus status)
     {
         using var provider = Services();
         var runtime = provider.GetRequiredService<IPipelineRuntime>();
         var run = await runtime.EnqueueAsync(Samples.Request());
         await provider.GetRequiredService<IPipelineStore>().TryUpdateAsync(run with { Status = status, Revision = 1 }, 0);
-        client.ClearReceivedCalls();
+        _client.ClearReceivedCalls();
         using var scope = provider.CreateScope();
         await scope.ServiceProvider.GetRequiredService<PipelineRunJob>().ExecuteAsync(run.Id, run.Title, false, default);
         await scope.ServiceProvider.GetRequiredService<PipelineStepJob>().ExecuteAsync(run.Id, run.Title, "job", "step", 1, default);
-        client.ReceivedCalls().Should().BeEmpty();
+        _client.ReceivedCalls().Should().BeEmpty();
     }
 
     [TestMethod]
@@ -150,7 +166,7 @@ public class HangfireTests
         var runtime = provider.GetRequiredService<IPipelineRuntime>();
         var run = await runtime.EnqueueAsync(Samples.Request());
         await provider.GetRequiredService<IPipelineStore>().TryUpdateAsync(run with { Status = PipelineStatus.Failed, Revision = 1 }, 0);
-        client.Create(Arg.Any<Job>(), Arg.Any<IState>()).Returns(_ => throw new InvalidOperationException("offline"));
+        _client.Create(Arg.Any<Job>(), Arg.Any<IState>()).Returns(_ => throw new InvalidOperationException("offline"));
         (await runtime.RetryAsync(run.Id)).Should().BeTrue();
         (await runtime.GetRunAsync(run.Id))!.Status.Should().Be(PipelineStatus.Running);
     }
@@ -160,18 +176,18 @@ public class HangfireTests
     {
         using var provider = Services();
         var run = await provider.GetRequiredService<IPipelineRuntime>().EnqueueAsync(Samples.Request());
-        client.ClearReceivedCalls();
+        _client.ClearReceivedCalls();
         using var scope = provider.CreateScope();
         var job = scope.ServiceProvider.GetRequiredService<PipelineRunJob>();
         await job.ExecuteAsync(run.Id, false, default);
         await job.ExecuteAsync(run.Id, run.Title, "ignored", "ignored", false, default);
-        client.Received(2).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineStepJob)), Arg.Any<EnqueuedState>());
+        _client.Received(2).Create(Arg.Is<Job>(j => j.Type == typeof(PipelineStepJob)), Arg.Any<EnqueuedState>());
     }
     private ServiceProvider Services()
     {
         var services = new ServiceCollection().AddLogging();
         services.AddPipeline(options => options.UseHangfire());
-        services.AddSingleton(client);
+        services.AddSingleton(_client);
         var registration = Substitute.For<IPipelineDefinitionRegistration>();
         registration.DefinitionId.Returns("test"); registration.DefinitionVersion.Returns(2);
         registration.Restore(Arg.Any<PipelineExecutionSpecification>()).Returns(Samples.Plan());

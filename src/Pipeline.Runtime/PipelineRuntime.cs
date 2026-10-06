@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Pipeline.Core;
@@ -14,13 +14,15 @@ namespace Pipeline.Runtime;
 /// <param name="timeProvider">The clock used for timestamps, polling deadlines, or lease validity.</param>
 /// <param name="logger">The logger receiving diagnostic or invocation messages.</param>
 /// <param name="operationGate">The shared process-local gate coordinating execution with reset, retry, and submission.</param>
+/// <param name="events">Event Publication</param>
 public sealed class PipelineRuntime(
     IPipelineStore store,
     IPipelineExecutionStore executionStore,
     IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
     ILogger<PipelineRuntime> logger,
-    PipelineOperationGate operationGate) : IPipelineRuntime
+    PipelineOperationGate operationGate,
+    PipelineRunEventQueue events) : IPipelineRuntime
 {
     private int _runnerStarted;
 
@@ -63,6 +65,12 @@ public sealed class PipelineRuntime(
             run,
             request,
             cancellationToken);
+
+        events.Publish(
+            run,
+            PipelineRunEventKind.Queued,
+            run.Revision,
+            run.QueuedAt);
 
         return run;
     }
