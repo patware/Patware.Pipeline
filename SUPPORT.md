@@ -1,6 +1,6 @@
 # Support
 
-Start with the [README](README.md), [documentation](doc/index.md), and
+Start with the [README](README.md), [documentation](docs/index.md), and
 [test guide](tests/README.md).
 
 For bugs, questions, and feature proposals, use

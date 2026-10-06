@@ -25,9 +25,13 @@
     "content": [
       {
         "files": [
-          "index.md",
-          "toc.yml",
+          "**/*.md",
+          "**/toc.yml",
           "api/**/*.yml"
+        ],
+        "exclude": [
+          "_site/**",
+          ".cache/**"
         ]
       }
     ],

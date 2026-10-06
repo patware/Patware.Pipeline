@@ -10,7 +10,7 @@ Keep your business logic in ordinary dependency-injected services. Let Pipeline 
 
 [See the workflow](#a-workflow-you-can-read) · [Get started](#your-first-run) · [Choose your libraries](#one-workflow-stack-pick-the-pieces-you-need) · [Explore the demo](#see-it-in-action)
 
-<!-- SCREENSHOT: Add a wide run-detail screenshot here. Show job cards, a polling step, and a few colorful log lines. Suggested asset: doc/images/pipeline-run.png. -->
+<!-- SCREENSHOT: Add a wide run-detail screenshot here. Show job cards, a polling step, and a few colorful log lines. Suggested asset: docs/images/pipeline-run.png. -->
 
 ## Business processes deserve better than a mystery background task
 
@@ -89,7 +89,7 @@ The complete demo also polls for enterprise voice enablement after applying the 
 | [Pipeline.Hangfire](src/Pipeline.Hangfire) | Hangfire processing, scheduled work, and startup recovery of unfinished runs. |
 | [Pipeline.Blazor](src/Pipeline.Blazor) | Run overview and detail pages, job cards, periodically refreshed progress, and ANSI-formatted logs. |
 
-The libraries currently target **.NET 10**. [Patware.Pipeline.Core 0.1.0](https://www.nuget.org/packages/Patware.Pipeline.Core/0.1.0) is published on NuGet.org. The companion libraries are available as source in this repository, alongside a working demo host; their NuGet releases have not yet been published.
+The libraries currently target **.NET 10**. [Patware.Pipeline.Core 0.2.0](https://www.nuget.org/packages/Patware.Pipeline.Core/0.2.0) is published on NuGet.org.
 
 ### Package dependencies
 
@@ -241,8 +241,8 @@ The Blazor library turns execution state into something people can follow:
 - **Readable output:** log levels and ANSI formatting bring context to the console.
 - **Recovery controls:** failed runs expose a **Re-run from failure** action.
 
-<!-- SCREENSHOT: Add the run overview here. Suggested asset: doc/images/pipeline-runs.png. -->
-<!-- SCREENSHOT: Add a failed run with the retry button and filtered step logs here. Suggested asset: doc/images/pipeline-retry.png. -->
+<!-- SCREENSHOT: Add the run overview here. Suggested asset: docs/images/pipeline-runs.png. -->
+<!-- SCREENSHOT: Add a failed run with the retry button and filtered step logs here. Suggested asset: docs/images/pipeline-retry.png. -->
 
 The demo host shows how to [register the Blazor assembly and interactive server rendering](src/Pipeline.Web/Program.cs). Its monitoring routes are `/pipeline-runs` and `/pipeline-runs/{RunId}`.
 
@@ -264,7 +264,7 @@ The host automatically prepares Pipeline and Hangfire storage. The configured SQ
 
 Open the application URL printed by the host and visit `/simulator`. Follow submitted workflows at `/pipeline-runs`. In Development, the Hangfire dashboard is available at `/hangfire`.
 
-<!-- SCREENSHOT: Add the directory simulator here, ideally alongside a run waiting for synchronization. Suggested asset: doc/images/pipeline-simulator.png. -->
+<!-- SCREENSHOT: Add the directory simulator here, ideally alongside a run waiting for synchronization. Suggested asset: docs/images/pipeline-simulator.png. -->
 
 ## Build, explore, contribute
 
@@ -274,10 +274,10 @@ dotnet build Pipeline.slnx
 dotnet test Pipeline.slnx
 ```
 
-Explore the [documentation overview](doc/index.md), or generate the API documentation with DocFX:
+Explore the [documentation overview](docs/index.md), or generate the API documentation with DocFX:
 
 ```powershell
-docfx doc/docfx.json --serve
+docfx docs/docfx.json --serve
 ```
 
 Have a workflow that would make a great example? Found a rough edge? Open an issue with the process you’re trying to model, the behavior you expected, and a minimal reproduction when possible. Pull requests are welcome.

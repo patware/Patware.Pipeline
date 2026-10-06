@@ -1,9 +1,9 @@
 <Solution>
-  <Folder Name="/doc/">
-    <File Path="doc/.gitignore" />
-    <File Path="doc/docfx.json" />
-    <File Path="doc/index.md" />
-    <File Path="doc/toc.yml" />
+  <Folder Name="/docs/">
+    <File Path="docs/.gitignore" />
+    <File Path="docs/docfx.json" />
+    <File Path="docs/index.md" />
+    <File Path="docs/toc.yml" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
