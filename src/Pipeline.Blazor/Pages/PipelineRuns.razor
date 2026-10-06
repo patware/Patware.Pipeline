@@ -1,17 +1,19 @@
-﻿@page "/pipeline-runs"
+@page "/pipeline-runs"
 @rendermode InteractiveServer
 @inherits LivePipelinePage
+
+@using Pipeline.Blazor.Components
 
 <PageTitle>Pipeline runs</PageTitle>
 
 <h1>Pipeline runs</h1>
 
 <p class="text-muted">
-    Showing @runs.Count of the latest 50 runs.
+    Showing @_runs.Count of the latest 50 runs.
     Refreshes every 20 seconds.
 </p>
 
-@if (runs.Count == 0)
+@if (_runs.Count == 0)
 {
     <p>No pipeline runs yet.</p>
 }
@@ -26,11 +28,12 @@ else
                     <th scope="col">Created</th>
                     <th scope="col">Created by</th>
                     <th scope="col">Status</th>
+                    <th scope="col">Jobs</th>
                     <th scope="col">Progress</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var run in runs)
+                @foreach (var run in _runs)
                 {
                     <tr @key="run.Id">
                         <td>
@@ -45,26 +48,12 @@ else
                         </td>
                         <td>@run.CreatedBy</td>
                         <td>@run.Status</td>
+                        <td><PipelineJobStatuses Jobs="@_jobsByRun[run.Id]"/></td>
                         <td>@run.StatusText</td>
+                        
                     </tr>
                 }
             </tbody>
         </table>
     </div>
-}
-
-@code {
-    private IReadOnlyList<global::Pipeline.Runtime.PipelineRun> runs = [];
-
-    /// <summary>Loads the fifty most recently created runs for the overview page.</summary>
-    /// <param name="cancellationToken">The token used to cancel snapshot loading.</param>
-    /// <returns>A task that completes after the run list is updated.</returns>
-    protected override async Task LoadSnapshotAsync(
-        CancellationToken cancellationToken)
-    {
-        runs = await Runtime.GetRunsAsync(
-            skip: 0,
-            take: 50,
-            cancellationToken: cancellationToken);
-    }
 }

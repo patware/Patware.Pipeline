@@ -1,0 +1,109 @@
+@using Pipeline.Runtime
+
+@if (Jobs.Count == 0)
+{
+    <span class="text-body-secondary">No job information</span>
+}
+else
+{
+    <ul class="job-statuses" aria-label="Job statuses">
+        @foreach (var job in Jobs)
+        {
+            var label = $"{job.JobId}: {StatusLabel(job.Status)}";
+
+            <li @key="(job.RunId, job.JobId)">
+                <a class="job-status @StatusClass(job.Status)"
+                   href="@LogUrl(job)"
+                   title="@label"
+                   aria-label="@label">
+                    <svg viewBox="0 0 24 24"
+                         aria-hidden="true"
+                         focusable="false">
+                        <circle class="status-background" cx="12" cy="12" r="10" />
+
+                        <g class="status-symbol">
+                            @switch (job.Status)
+                            {
+                                case JobExecutionStatus.Succeeded:
+                                    <path d="m7.5 12 3 3 6-6" />
+                                    break;
+
+                                case JobExecutionStatus.Running:
+                                    <g class="running-arrows">
+                                        <path d="M6 11a6 6 0 0 1 10-3
+                                        M16 5v3h-3
+                                        M18 13a6 6 0 0 1-10 3
+                                        M8 19v-3h3" />
+                                    </g>
+                                    break;
+
+                                case JobExecutionStatus.Failed:
+                                    <path d="m8 8 8 8M16 8l-8 8" />
+                                    break;
+
+                                case JobExecutionStatus.TimedOut:
+                                    <circle cx="12" cy="12" r="5" />
+                                    <path d="M12 8v4l3 2" />
+                                    break;
+
+                                case JobExecutionStatus.ConditionSkipped:
+                                    <path d="m8 8 5 4-5 4zM16 8v8" />
+                                    break;
+
+                                case JobExecutionStatus.Cancelled:
+                                    <path d="m6 18 12-12" />
+                                    break;
+
+                                case JobExecutionStatus.Blocked:
+                                    <path d="M8 12h8" />
+                                    break;
+
+                                case JobExecutionStatus.Pending:
+                                    break;
+
+                                default:
+                                    <path d="M12 7v6M12 16v1" />
+                                    break;
+                            }
+                        </g>
+                    </svg>
+                </a>
+            </li>
+        }
+    </ul>
+}
+
+
+@code {
+    /// <summary>
+    /// Gets or sets the jobs in their desired display order.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<JobExecutionState> Jobs { get; set; } = [];
+
+    private static string StatusLabel(JobExecutionStatus status) =>
+        status switch
+        {
+            JobExecutionStatus.ConditionSkipped => "Skipped",
+            JobExecutionStatus.TimedOut => "Timed out",
+            _ => status.ToString()
+        };
+
+    private static string StatusClass(JobExecutionStatus status) =>
+        status switch
+        {
+            JobExecutionStatus.Pending => "status-pending",
+            JobExecutionStatus.Running => "status-running",
+            JobExecutionStatus.Succeeded => "status-succeeded",
+            JobExecutionStatus.Failed => "status-failed",
+            JobExecutionStatus.TimedOut => "status-timed-out",
+            JobExecutionStatus.ConditionSkipped => "status-skipped",
+            JobExecutionStatus.Cancelled => "status-cancelled",
+            JobExecutionStatus.Blocked => "status-blocked",
+            _ => "status-unknown"
+        };
+
+    private static string LogUrl(JobExecutionState job) =>
+        $"pipeline-runs/{job.RunId}" +
+        $"?job={Uri.EscapeDataString(job.JobId)}#run-logs";
+}

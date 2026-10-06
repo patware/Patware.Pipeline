@@ -10,6 +10,10 @@ published releases are identified by package and release date below.
 - Repository formatting, Git attributes, SDK selection, and Visual Studio setup.
 - Shared build version sourced from `VERSION` (currently `0.1.0`).
 - Contribution, branching, conduct, security, ownership, and support guidance.
+- Pipeline Runs now includes a Jobs column with one status icon per job,
+  displayed in pipeline order. Icons link directly to job logs and include
+  job names and statuses in tooltips and screen-reader labels. Running jobs
+  use animated icons that respect reduced-motion preferences.
 
 ### Changed
 
