@@ -20,6 +20,11 @@ published releases are identified by package and release date below.
   to react to persisted transitions with either the built-in processor or Hangfire.
 - Notifications include run identity, definition, title, submitter, committed
   revision, status, timestamp, and status text.
+- Added injectable IPipelineStepContext for step services to access the
+  current run ID, pipeline definition and version, title, submitter,
+  run creation timestamp, job ID, and step ID.
+- Context is initialized before step construction and scoped to each
+  invocation, enabling attribution of business changes to pipeline runs.
 
 ### Changed
 

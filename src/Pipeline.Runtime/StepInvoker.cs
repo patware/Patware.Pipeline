@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
@@ -68,11 +68,23 @@ public sealed class StepInvoker(IServiceProvider services) : IStepInvoker
 
         await using var invocationScope = services.CreateAsyncScope();
 
-        var stepLogger = invocationScope.ServiceProvider.GetRequiredService<PipelineStepLogger>();
+        var provider = invocationScope.ServiceProvider;
+
+        var store = provider.GetRequiredService<IPipelineStore>();
+
+        var run = await store.GetAsync(claim.RunId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Pipeline run '{claim.RunId}' no longer exists.");
+
+        var stepContext = provider.GetRequiredService<PipelineStepContext>();
+
+        stepContext.Initialize(run, claim);
+
+        var stepLogger = provider.GetRequiredService<PipelineStepLogger>();
 
         stepLogger.Initialize(claim);
 
-        var service = invocationScope.ServiceProvider.GetRequiredService(definition.ServiceType);
+        var service = provider.GetRequiredService(definition.ServiceType);
 
         Task task;
 

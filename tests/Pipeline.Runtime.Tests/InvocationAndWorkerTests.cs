@@ -59,8 +59,20 @@ public class InvocationAndWorkerTests
         using var provider = new ServiceCollection().AddLogging().AddPipeline().AddScoped<LoggingStep>().BuildServiceProvider();
         var builder = new PipelineBuilderFactory().Create(new("throw", "Throw"));
         builder.AddJob("job").Step<LoggingStep>("step").Execute((s, ct) => s.Throw(ct));
-        var definition = builder.Build().Jobs[0].Steps[0];
-        var claim = new StepClaim(Guid.NewGuid(), "job", "step", Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(1));
+
+        var plan = builder.Build();
+        var definition = plan.Jobs[0].Steps[0];
+
+        var runtime = provider.GetRequiredService<IPipelineRuntime>();
+        var run = await runtime.EnqueueAsync(Samples.Request(plan));
+
+        var claim = new StepClaim(
+            run.Id,
+            "job",
+            "step",
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow.AddMinutes(1));
+
         var invoker = new StepInvoker(provider);
         await FluentActions.Awaiting(() => invoker.InvokeAsync(definition, new("[]"), claim, default)).Should().ThrowAsync<ApplicationException>().WithMessage("original exception");
         foreach (var json in new[] { "{}", "[1]" })

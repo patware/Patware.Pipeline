@@ -102,6 +102,10 @@ public static class PipelineServiceCollectionExtensions
 
         services.TryAddScoped<IPipelineStepLogger>(provider => provider.GetRequiredService<PipelineStepLogger>());
 
+        services.TryAddScoped<PipelineStepContext>();
+
+        services.TryAddScoped<IPipelineStepContext>(provider => provider.GetRequiredService<PipelineStepContext>());
+
         services.TryAddScoped<PipelineRetryService>();
 
         services.AddHostedService<PipelineRunEventDispatcher>();

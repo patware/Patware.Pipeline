@@ -1,11 +1,17 @@
-﻿using Pipeline.Core;
+using Pipeline.Core;
 using Pipeline.Web.Services;
 
 namespace Pipeline.Web.Pipelines.Actions;
 
 public sealed record PreparationResult(bool RequiresDirectorySync);
 
-public class PrepareEmployee(Services.IActiveDirectory activeDirectory, Services.IMsGraph msGraph, Repository.IRepo repo, IPipelineStepLogger logger)
+public class PrepareEmployee(
+    Services.IActiveDirectory activeDirectory,
+    Services.IMsGraph msGraph,
+    Repository.IRepo repo,
+    IPipelineStepLogger logger,
+    ILogger<PrepareEmployee> regularLogger,
+    IPipelineStepContext pipelineContext)
 {
     // Move into a licensing configuration service when needed.
     private const string DefaultPhoneSystemGroup = "AD-P-LIC-M365_PhoneSystem_OrgAdm";
@@ -13,6 +19,21 @@ public class PrepareEmployee(Services.IActiveDirectory activeDirectory, Services
     public async Task<PreparationResult> ExecuteAsync(string upn, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        var context = pipelineContext.Current;
+
+        if (regularLogger.IsEnabled(LogLevel.Information))
+        {
+            regularLogger.LogInformation(
+                "Executing {DefinitionId} v{DefinitionVersion}, run {RunId}, " +
+                "job {JobId}, step {StepId}, initiated by {InitiatedBy}",
+                context.Definition.Id,
+                context.Definition.Version,
+                context.RunId,
+                context.JobId,
+                context.StepId,
+                context.CreatedBy);
+        }
 
         await logger.InformationAsync($"Fetching {Style.Blue}'{upn}'{Style.Reset} details in MS Graph", cancellationToken);
 
