@@ -14,6 +14,12 @@ published releases are identified by package and release date below.
   displayed in pipeline order. Icons link directly to job logs and include
   job names and statuses in tooltips and screen-reader labels. Running jobs
   use animated icons that respect reduced-motion preferences.
+- Added pipeline run lifecycle notifications for Queued, Started, Completed,
+  Failed, and RetryRequested transitions.
+- Applications can register scoped IPipelineRunEventHandler implementations
+  to react to persisted transitions with either the built-in processor or Hangfire.
+- Notifications include run identity, definition, title, submitter, committed
+  revision, status, timestamp, and status text.
 
 ### Changed
 
@@ -21,6 +27,8 @@ published releases are identified by package and release date below.
 - Pipeline tables use the `pipeline` schema, with applied migrations tracked in `pipeline.SchemaVersions`.
 - Consolidated the initial development migration history into `InitialPipelineSchema` in the persistence library.
 - Removed the requirement for consuming applications to configure or apply pipeline migrations.
+- Pipeline.Web now filters Entity Framework Core development logs to Warning
+  and above, hiding routine SQL output while retaining warnings and errors.
 
 ### Existing baseline
 

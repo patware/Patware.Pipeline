@@ -105,6 +105,32 @@ Single-run queries return `null` when a run is missing. Retry returns `false` if
 
 Successful steps remain complete during retry. Design external side effects to tolerate repeated attempts: retry and recovery do not provide an exactly-once guarantee for calls to other systems.
 
+## React to run lifecycle events
+
+Implement `IPipelineRunEventHandler` and register it with dependency injection:
+
+```csharp
+builder.Services.AddScoped<
+    IPipelineRunEventHandler,
+    MyPipelineRunEventHandler>();
+```
+
+Handlers implement:
+
+```csharp
+Task HandleAsync(
+    PipelineRunEvent notification,
+    CancellationToken cancellationToken);
+```
+
+Notifications cover Queued, Started, Completed, Failed, and RetryRequested. They are queued only after the corresponding state change is successfully persisted. RetryRequested means a failed run was reopened to resume unfinished work; it retains the same run ID.
+
+`AddPipeline()` registers the notification dispatcher for both the built-in processor and Hangfire. The application host must be running for delivery. Handlers execute sequentially in a new dependency-injection scope for each notification. Handler exceptions are logged without changing the persisted pipeline outcome.
+
+Delivery is process-local and best-effort. Notifications can be lost during shutdown or a crash, and failed handlers are not automatically retried. Use a durable delivery mechanism when reactions must survive process failure.
+
+For Blazor notifications, forward events through an application-owned UI notification service. Handler scopes are separate from Blazor circuit scopes. Separate worker and web processes require a cross-process transport.
+
 ## Choose storage and processing
 
 `AddPipeline()` defaults to an in-memory store and the built-in hosted worker. In-memory runs, outputs, and logs are lost when the process ends.
