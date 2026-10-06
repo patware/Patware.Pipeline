@@ -3,20 +3,24 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pipeline.Persistence.EntityFrameworkCore;
 
 #nullable disable
 
-namespace Pipeline.Web.Migrations
+namespace Pipeline.Persistence.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(PipelineDbContext))]
-    partial class PipelineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261006013107_InitialPipelineSchema")]
+    partial class InitialPipelineSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("pipeline")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
@@ -54,7 +58,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasKey("RunId", "JobId");
 
-                    b.ToTable("PipelineJobs", (string)null);
+                    b.ToTable("PipelineJobs", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineLogEntryEntity", b =>
@@ -87,7 +91,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasKey("RunId", "Sequence");
 
-                    b.ToTable("PipelineRunLogs", (string)null);
+                    b.ToTable("PipelineRunLogs", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineRunEntity", b =>
@@ -149,7 +153,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasIndex("Status", "QueuedAt", "Id");
 
-                    b.ToTable("PipelineRuns", (string)null);
+                    b.ToTable("PipelineRuns", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineSpecificationEntity", b =>
@@ -175,7 +179,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasKey("RunId");
 
-                    b.ToTable("PipelineSpecifications", (string)null);
+                    b.ToTable("PipelineSpecifications", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineStepEntity", b =>
@@ -237,7 +241,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasIndex("Status", "NextAttemptAt");
 
-                    b.ToTable("PipelineSteps", (string)null);
+                    b.ToTable("PipelineSteps", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineJobEntity", b =>

@@ -12,7 +12,7 @@ Browse the [Core API reference](xref:Pipeline.Core) or start with the library ma
 | [Pipeline.Hangfire](xref:Pipeline.Hangfire) | Dispatch execution through Hangfire and recover unfinished runs. |
 | [Pipeline.Blazor](xref:Pipeline.Blazor) | Display runs, job progress, and formatted logs with periodic refresh. |
 
-To register the default runtime, use `AddPipeline`. Register step services and an `IPipelineDefinitionRegistration` for each definition version separately. Select SQL Server persistence with `UseSqlServer` and Hangfire processing with `UseHangfire` in the same configuration callback when needed.
+To register the default runtime, use `AddPipeline`. Register step services and an `IPipelineDefinitionRegistration` for each definition version separately. Select SQL Server persistence with `UseSqlServer` and Hangfire processing with `UseHangfire` in the same configuration callback when needed. SQL Server persistence automatically applies bundled migrations during host startup before hosted workers begin processing; applications only configure the connection string.
 
 ## Generate this documentation
 

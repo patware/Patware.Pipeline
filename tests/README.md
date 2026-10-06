@@ -81,6 +81,9 @@ SQLite cannot establish SQL Server-specific query, migration, locking, or
 multi-process concurrency behavior. In particular, DateTimeOffset ordering is
 covered in the in-memory store, not asserted against SQLite. Actual SQL Server
 paging and active-run queries need a SQL Server integration environment.
+Automatic schema initialization, migration upgrades, and startup ordering with 
+real SQL Server and Hangfire require integration validation. 
+SQLite store tests do not validate the bundled SQL Server migrations.
 
 Long-running lease renewal, background refresh timers, browser reconnection, and
 multi-worker races still warrant integration tests. The coverage figures describe

@@ -25,6 +25,9 @@
     <File Path="VERSION" />
   </Folder>
   <Folder Name="/tests/">
+    <File Path="tests/coverage.runsettings" />
+    <File Path="tests/Directory.Build.props" />
+    <File Path="tests/README.md" />
     <Project Path="tests/Pipeline.Blazor.Tests/Pipeline.Blazor.Tests.csproj" />
     <Project Path="tests/Pipeline.Core.Tests/Pipeline.Core.Tests.csproj" />
     <Project Path="tests/Pipeline.Hangfire.Tests/Pipeline.Hangfire.Tests.csproj" />

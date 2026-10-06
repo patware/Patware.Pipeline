@@ -3,23 +3,21 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pipeline.Persistence.EntityFrameworkCore;
 
 #nullable disable
 
-namespace Pipeline.Web.Migrations
+namespace Pipeline.Persistence.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(PipelineDbContext))]
-    [Migration("20260928194718_AddPipelineExecutionState")]
-    partial class AddPipelineExecutionState
+    partial class PipelineDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("pipeline")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
@@ -57,7 +55,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasKey("RunId", "JobId");
 
-                    b.ToTable("PipelineJobs", (string)null);
+                    b.ToTable("PipelineJobs", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineLogEntryEntity", b =>
@@ -68,16 +66,29 @@ namespace Pipeline.Web.Migrations
                     b.Property<int>("Sequence")
                         .HasColumnType("int");
 
+                    b.Property<string>("JobId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Level")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StepId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("RunId", "Sequence");
 
-                    b.ToTable("PipelineRunLogs", (string)null);
+                    b.ToTable("PipelineRunLogs", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineRunEntity", b =>
@@ -139,7 +150,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasIndex("Status", "QueuedAt", "Id");
 
-                    b.ToTable("PipelineRuns", (string)null);
+                    b.ToTable("PipelineRuns", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineSpecificationEntity", b =>
@@ -165,7 +176,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasKey("RunId");
 
-                    b.ToTable("PipelineSpecifications", (string)null);
+                    b.ToTable("PipelineSpecifications", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineStepEntity", b =>
@@ -227,7 +238,7 @@ namespace Pipeline.Web.Migrations
 
                     b.HasIndex("Status", "NextAttemptAt");
 
-                    b.ToTable("PipelineSteps", (string)null);
+                    b.ToTable("PipelineSteps", "pipeline");
                 });
 
             modelBuilder.Entity("Pipeline.Persistence.EntityFrameworkCore.Entities.PipelineJobEntity", b =>

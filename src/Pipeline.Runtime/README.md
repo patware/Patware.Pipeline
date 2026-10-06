@@ -124,7 +124,7 @@ builder.Services.AddPipeline(options =>
 
 You can also select just SQL Server or just Hangfire. Hangfire uses storage matching the selected persistence configuration and registers startup recovery for unfinished runs.
 
-Call `AddPipeline` **once**, choosing providers in that callback. Apply EF Core migrations before processing database-backed runs; registration does not create the pipeline schema. The host starts the selected processor automatically; application code does not need to call `IPipelineRuntime.RunAsync`.
+Call AddPipeline once, choosing providers in that callback. When SQL Server persistence is selected, the persistence library applies its bundled migrations during host startup, before hosted workers begin processing. The host starts the selected processor automatically; application code does not need to call IPipelineRuntime.RunAsync.
 
 ## Complete the picture
 

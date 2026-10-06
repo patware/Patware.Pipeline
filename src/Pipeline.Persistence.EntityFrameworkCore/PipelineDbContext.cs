@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 using Pipeline.Persistence.EntityFrameworkCore.Entities;
 
@@ -7,7 +7,10 @@ namespace Pipeline.Persistence.EntityFrameworkCore;
 /// <summary>
 /// Maps pipeline runs, specifications, jobs, steps, and logs, including concurrency tokens and cascade deletion.
 /// </summary>
-/// <remarks>The host manages schema creation and migrations. Stores obtain short-lived contexts through <see cref="IDbContextFactory{TContext}" />.</remarks>
+/// <remarks>
+/// When registered through UseSqlServer, the persistence library applies its bundled migrations during host startup before hosted workers start.
+/// Stores obtain short-lived contexts through <see cref="IDbContextFactory{TContext}" />.
+/// </remarks>
 /// <param name="options">The pipeline registration options or typed database context options to use.</param>
 public sealed class PipelineDbContext(DbContextOptions<PipelineDbContext> options) : DbContext(options)
 {
@@ -28,6 +31,8 @@ public sealed class PipelineDbContext(DbContextOptions<PipelineDbContext> option
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.HasDefaultSchema("pipeline");
 
         /* ============= Specifications ================= */
 

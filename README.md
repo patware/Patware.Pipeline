@@ -229,7 +229,7 @@ At a glance:
 | SQL Server | Built-in worker | `options.UseSqlServer(connectionString)` |
 | SQL Server | Hangfire | `options.UseSqlServer(connectionString).UseHangfire()` |
 
-Apply your EF Core migrations before processing runs; registration does not create the pipeline schema. Keep the definition versions used by persisted runs registered so recovery and retry can reconstruct their original plans.
+SQL Server persistence initializes automatically when the host starts. The persistence library applies its bundled migrations to the pipeline schema before hosted workers begin processing. Applications only supply the connection string. Keep the definition versions used by persisted runs registered so recovery and retry can reconstruct their original plans.
 
 ## Give every run a front row seat
 
@@ -254,12 +254,13 @@ To run the demo:
 
 1. Install the .NET 10 SDK and have a SQL Server instance available.
 2. Set the `ConnectionStrings__Pipeline` environment variable to your SQL Server connection string.
-3. Apply the included [EF Core migrations](src/Pipeline.Web/Migrations) to that database using the `PipelineDbContext` context.
-4. Start the host:
+3. Start the host:
 
    ```powershell
    dotnet run --project src/Pipeline.Web --launch-profile https
    ```
+
+The host automatically prepares Pipeline and Hangfire storage. The configured SQL Server identity needs permission to create and update their database objects.
 
 Open the application URL printed by the host and visit `/simulator`. Follow submitted workflows at `/pipeline-runs`. In Development, the Hangfire dashboard is available at `/hangfire`.
 

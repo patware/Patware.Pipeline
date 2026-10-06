@@ -64,7 +64,7 @@ builder.Services.AddPipeline(options =>
         .UseHangfire());
 ```
 
-The integration uses the same SQL Server connection string for pipeline persistence and Hangfire storage. Configure your pipeline migrations assembly when needed and **deploy the pipeline schema before starting processing**. See the [EF Core provider README](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Persistence.EntityFrameworkCore/README.md) for migrations setup.
+The integration uses the same SQL Server connection string for pipeline persistence and Hangfire storage. Pipeline automatically initializes its pipeline schema before hosted workers start; Hangfire manages its own storage schema. See the [EF Core provider README](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Persistence.EntityFrameworkCore/README.md) for database initialization details.
 
 Call `AddPipeline` once. Its callback selects both persistence and processing; the Hangfire integration currently supports the in-memory and SQL Server persistence kinds.
 

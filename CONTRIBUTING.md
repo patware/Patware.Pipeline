@@ -20,8 +20,7 @@ dotnet test Pipeline.slnx --configuration Release --no-build
 ```
 
 The unit tests do not require SQL Server. See [tests/README.md](tests/README.md)
-for coverage commands and integration-test limitations. The demo requires SQL
-Server and migrations; follow [README.md](README.md).
+for coverage commands and integration-test limitations. The demo requires SQL Server and initializes its schema automatically; follow README.md.
 
 ## Make a change
 
@@ -48,3 +47,32 @@ Use [GitHub issues](https://github.com/patware/Patware.Pipeline/issues) for
 reproducible bugs and feature proposals. Include the package version, SDK,
 expected behavior, actual behavior, and a minimal reproduction. Report
 vulnerabilities using [SECURITY.md](SECURITY.md).
+
+## Changing the persistence model
+
+The persistence library owns pipeline migrations. Consuming applications
+never generate them.
+
+After changing the persistence model, generate a migration from the repository
+root:
+
+```powershell
+dotnet ef migrations add DescribeYourChange --project src/Pipeline.Persistence.EntityFrameworkCore --startup-project src/Pipeline.Web --context PipelineDbContext --output-dir Migrations
+```
+
+Commit the migration, its designer file, and the updated model snapshot together.
+
+Before releasing, check for model changes without a migration:
+
+```powershell
+dotnet ef migrations has-pending-model-changes --project src/Pipeline.Persistence.EntityFrameworkCore --startup-project src/Pipeline.Web --context PipelineDbContext
+```
+
+Verify initialization against a fresh SQL Server database and verify that a
+second startup preserves existing data. For subsequent releases, also verify
+upgrading a database created by the previous release.
+
+The initial development migrations were consolidated into
+`InitialPipelineSchema`. Databases created from the earlier host-owned migration
+history require a fresh development database or an explicit conversion plan.
+The new baseline does not automatically convert that old history.

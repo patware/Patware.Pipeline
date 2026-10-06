@@ -52,73 +52,28 @@ This keeps the built-in hosted worker and replaces in-memory storage. Register y
 
 Call `AddPipeline` once. Select persistence and processing together in its callback.
 
-## Give the database its schema
+## Automatic database setup
 
-**Registration does not create tables or apply migrations.** Your host owns schema deployment, and the pipeline schema must be ready before processing starts. This package contains `PipelineDbContext` and its model, but does not ship migrations.
+`UseSqlServer(connectionString)` registers automatic database initialization. When the host starts, the persistence library applies its bundled migrations before hosted workers begin processing.
 
-Because the context lives in this library, configure a migrations assembly belonging to your application or a dedicated migrations project. For example, if migrations live in your host assembly, `YourApp`:
+On first startup, it creates the database when needed and installs the pipeline tables. Subsequent startups apply only pending migrations shipped with the installed library version.
 
-```csharp
-builder.Services.AddPipeline(options =>
-    options.UseSqlServer(
-        connectionString,
-        configureSqlServer: sql => sql.MigrationsAssembly("YourApp")));
-```
+Pipeline tables use the `pipeline` schema. The library tracks applied migrations in `pipeline.SchemaVersions`.
 
-Replace `YourApp` with your actual assembly name. Use the same migrations assembly in the design-time configuration.
+Applications supply a connection string; they do not generate pipeline migrations, configure a migrations assembly, or call `MigrateAsync`. The SQL Server identity must have permission to create and update the required database objects, including creating the database if it does not exist.
 
-### A host-owned migration setup
-
-Add `Microsoft.EntityFrameworkCore.Design` version `10.0.12` to the host with `PrivateAssets="all"`, and make a compatible .NET 10 `dotnet-ef` tool available. Add this design-time factory to the host project:
-
-```csharp
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-using Pipeline.Persistence.EntityFrameworkCore;
-
-public sealed class PipelineDesignTimeFactory
-    : IDesignTimeDbContextFactory<PipelineDbContext>
-{
-    public PipelineDbContext CreateDbContext(string[] args)
-    {
-        var connectionString = Environment.GetEnvironmentVariable(
-            "ConnectionStrings__Pipeline")
-            ?? throw new InvalidOperationException(
-                "Set ConnectionStrings__Pipeline before running EF tools.");
-
-        var migrationsAssembly =
-            typeof(PipelineDesignTimeFactory).Assembly.GetName().Name!;
-
-        var options = new DbContextOptionsBuilder<PipelineDbContext>()
-            .UseSqlServer(connectionString,
-                sql => sql.MigrationsAssembly(migrationsAssembly))
-            .Options;
-
-        return new PipelineDbContext(options);
-    }
-}
-```
-
-From the host project directory, generate and apply its initial migration:
-
-```shell
-dotnet ef migrations add InitialPipeline --context PipelineDbContext --output-dir Migrations/Pipeline
-dotnet ef database update --context PipelineDbContext
-```
-
-Review the generated migration before applying it. As you upgrade this package, generate migrations for model changes and deploy them before starting the updated processors. For a separate migrations project, follow [EF Core's migrations project guidance](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/projects).
-
-The [demo host's migrations](https://github.com/patware/Patware.Pipeline/tree/main/src/Pipeline.Web/Migrations) show the repository's schema evolution.
+Initialization failure stops host startup so processing cannot begin against an incomplete schema.
 
 ## What lives in SQL Server?
 
 | Table | Stored data |
 | --- | --- |
-| `PipelineRuns` | Run identity, workflow definition, title, submitter, lifecycle state, timestamps, and revision. |
-| `PipelineSpecifications` | Definition ID and version plus serialized input and settings. |
-| `PipelineJobs` | Job execution state, condition results, timing, errors, and revision. |
-| `PipelineSteps` | Step execution state, attempts, bound arguments, outputs, polling deadlines, leases, and errors. |
-| `PipelineRunLogs` | Ordered log entries with timestamps, severity, and optional job and step identifiers. |
+| `pipeline.PipelineRuns` | Run identity, workflow definition, title, submitter, lifecycle state, timestamps, and revision. |
+| `pipeline.PipelineSpecifications` | Definition ID and version plus serialized input and settings. |
+| `pipeline.PipelineJobs` | Job execution state, condition results, timing, errors, and revision. |
+| `pipeline.PipelineSteps` | Step execution state, attempts, bound arguments, outputs, polling deadlines, leases, and errors. |
+| `pipeline.PipelineRunLogs` | Ordered log entries with timestamps, severity, and optional job and step identifiers. |
+| `pipeline.SchemaVersions` | Applied library migration identifiers and EF Core versions. |
 
 Stores use short-lived contexts obtained from `IDbContextFactory<PipelineDbContext>`. Application code normally accesses these records through the runtime APIs rather than manipulating persistence entities directly.
 
@@ -133,12 +88,11 @@ using Pipeline.Runtime;
 
 builder.Services.AddPipeline(options =>
     options
-        .UseSqlServer(connectionString,
-            sql => sql.MigrationsAssembly("YourApp"))
+        .UseSqlServer(connectionString)
         .UseHangfire());
 ```
 
-Hangfire uses the same SQL Server connection string for its storage and registers startup recovery of unfinished runs. Configure and deploy the pipeline schema separately from Hangfire's storage setup.
+Hangfire uses the same SQL Server connection string for its storage and registers startup recovery of unfinished runs. Pipeline initializes its own schema before hosted workers start, and Hangfire manages its own storage schema. No application migration setup is required.
 
 ## Keep recovery compatible
 

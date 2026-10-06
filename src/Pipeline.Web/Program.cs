@@ -37,14 +37,16 @@ if (string.IsNullOrWhiteSpace(connectionString))
 // Option 3: Built-in processor + SQL Server persistence.
 //builder.Services.AddPipeline(options =>
 //{
-//    options.UseSqlServer(connectionString: builder.Configuration.GetConnectionString("Pipeline")!);
+//    options
+//        .UseSqlServer(connectionString)
 //});
 
+// Option 4: Hangfire processor + SQL Server persistence.
 // Option 4: Hangfire processor + SQL Server persistence.
 builder.Services.AddPipeline(options =>
 {
     options
-        .UseSqlServer(connectionString: connectionString)
+        .UseSqlServer(connectionString)
         .UseHangfire();
 });
 
@@ -91,13 +93,11 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
-if (app.Environment.IsDevelopment())
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
-    app.UseHangfireDashboard("/hangfire", new DashboardOptions
-    {
-        AppPath = "/simulator"
-    });
-}
+    AppPath = "/simulator"
+});
 
 app.UseAntiforgery();
 

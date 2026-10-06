@@ -11,12 +11,23 @@ published releases are identified by package and release date below.
 - Shared build version sourced from `VERSION` (currently `0.1.0`).
 - Contribution, branching, conduct, security, ownership, and support guidance.
 
+### Changed
+
+- SQL Server persistence now ships and automatically applies library-owned migrations before hosted workers start.
+- Pipeline tables use the `pipeline` schema, with applied migrations tracked in `pipeline.SchemaVersions`.
+- Consolidated the initial development migration history into `InitialPipelineSchema` in the persistence library.
+- Removed the requirement for consuming applications to configure or apply pipeline migrations.
+
 ### Existing baseline
 
 - Execution runtime, in-memory storage, and retry support.
 - Entity Framework Core persistence and Hangfire processing.
 - Blazor monitoring components and a demo web host.
 - MSTest suites for the five libraries.
+
+### Compatibility
+
+- Databases created using the previous host-owned migration history require a fresh development database or an explicit conversion plan.
 
 ## Patware.Pipeline.Core 0.1.0 - 2026-10-03
 
