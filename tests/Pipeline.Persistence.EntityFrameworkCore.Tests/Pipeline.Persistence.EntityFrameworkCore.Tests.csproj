@@ -5,4 +5,12 @@
     <Compile Include="../Shared/StoreContractTests.cs" Link="Shared/StoreContractTests.cs" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="coverlet.collector" Version="10.1.0" />
+    <PackageReference Update="FluentAssertions" Version="8.11.0" />
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Update="MSTest.TestAdapter" Version="4.4.1" />
+    <PackageReference Update="MSTest.TestFramework" Version="4.4.1" />
+    <PackageReference Update="NSubstitute" Version="6.2.0" />
+  </ItemGroup>
 </Project>
