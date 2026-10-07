@@ -1,6 +1,6 @@
 # Pipeline
 
-These documents describe Patware.Pipeline architecture and proposed capability requirements. Proposed requirements do not establish current implementation support. Core covers model and runtime behavior; Durable covers persisted recovery; Distributed covers coordination across workers; Optional applies only when a capability is adopted; Host identifies consuming-application responsibilities; Future identifies exploratory capabilities.
+These guides describe the implementation in `src/`, reviewed on 2026-10-06. They distinguish current behavior, implementation limits, and consuming-host responsibilities. Each guide links to the relevant source.
 
 Browse the [Core API reference](xref:Pipeline.Core) or start with the library matching your task:
 
@@ -16,7 +16,7 @@ To register the default runtime, use `AddPipeline`. Register step services and a
 
 ## Documentation guide
 
-The architecture, development, design, and validation documents describe a **proposed validation baseline**, not a claim that every capability is implemented or every decision is accepted.
+Start with the architecture overview to understand the library boundaries, or the development setup to build and run the demo. Design documents explain source-derived choices rather than claiming historical approval of formal decisions.
 
 | Area | Documents |
 | --- | --- |
@@ -24,8 +24,8 @@ The architecture, development, design, and validation documents describe a **pro
 | Definitions and execution | [Definitions](architecture/PIPELINE-DEFINITIONS.md), [orchestrator](architecture/PIPELINE-ORCHESTRATOR.md), [lifecycle semantics](architecture/STATE-MACHINES.md), and [waits and approvals](architecture/WAITS-AND-APPROVALS.md). |
 | Persistence and integrations | [Persistence](architecture/DATABASE.md), [reconciliation](architecture/RECONCILIATION.md), and [extension contracts](architecture/PLUGIN-ARCHITECTURE.md). |
 | Security and observability | [Security](architecture/SECURITY.md) and [execution history and observability](architecture/OBSERVABILITY.md). |
-| Development | [Coding guidance](development/CODING-STANDARDS.md), [testing](development/TESTING.md), and [UI integration](development/UI-GUIDELINES.md). |
-| Design and validation | [Adoption decisions](design/ADOPTION-DECISIONS.md) and [capability checklist](validation/CAPABILITY-CHECKLIST.md). |
+| Development | [Getting started](development/GETTING-STARTED.md), [coding guidance](development/CODING-STANDARDS.md), [testing](development/TESTING.md), and [UI integration](development/UI-GUIDELINES.md). |
+| Design | [Implemented decisions](design/ADOPTION-DECISIONS.md) and [capability boundaries](design/CAPABILITY-BOUNDARIES.md). |
 
 ## Generate this documentation
 

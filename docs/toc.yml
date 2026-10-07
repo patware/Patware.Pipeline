@@ -1,5 +1,11 @@
 items:
 - name: Overview
   href: index.md
+- name: Architecture
+  href: architecture/toc.yml
+- name: Design
+  href: design/toc.yml
+- name: Development
+  href: development/toc.yml
 - name: API reference
   href: api/
