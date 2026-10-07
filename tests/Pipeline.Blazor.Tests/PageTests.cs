@@ -3,7 +3,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
-using Pipeline.Runtime;
+using Pipeline.Contracts;
 
 using RunPage = Pipeline.Blazor.Pages.PipelineRun;
 using RunsPage = Pipeline.Blazor.Pages.PipelineRuns;
@@ -13,7 +13,7 @@ namespace Pipeline.Blazor.Tests;
 [TestClass]
 public class PageTests
 {
-    private readonly IPipelineRuntime _runtime = Substitute.For<IPipelineRuntime>();
+    private readonly IPipelineMonitor _monitor = Substitute.For<IPipelineMonitor>();
 
     private async Task<string> Render<T>(Action<ComponentParameterCollectionBuilder<T>>? parameters = null)
         where T : IComponent
@@ -25,7 +25,7 @@ public class PageTests
     private BunitContext Context()
     {
         var context = new BunitContext();
-        context.Services.AddSingleton(_runtime);
+        context.Services.AddSingleton(_monitor);
         context.Services.AddSingleton(TimeProvider.System);
         return context;
     }
@@ -34,22 +34,60 @@ public class PageTests
     [TestMethod]
     public async Task Runs_page_renders_empty_state()
     {
-        _runtime.GetRunsAsync(0, 50, Arg.Any<CancellationToken>()).Returns([]);
+        _monitor.GetRunsAsync(0, 50, Arg.Any<CancellationToken>()).Returns([]);
         (await Render<RunsPage>()).Should().Contain("No pipeline runs yet.");
-        await _runtime.Received(1).GetRunsAsync(0, 50, Arg.Any<CancellationToken>());
+        await _monitor.Received(1).GetRunsAsync(0, 50, Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
-    public async Task Runs_page_displays_metadata_and_encoded_titles()
+    public async Task Runs_page_displays_summaries_without_execution_queries()
     {
+        // Arrange
         var run = Run(PipelineStatus.Queued);
 
-        _runtime.GetRunsAsync(0, 50, Arg.Any<CancellationToken>()).Returns([run]);
-        _runtime.GetExecutionAsync(run.Id, Arg.Any<CancellationToken>()).Returns(new PipelineExecutionSnapshot(run, [], []));
+        var summary = new PipelineRunSummaryView
+        {
+            Id = run.Id,
+            Definition = run.Definition,
+            Title = run.Title,
+            CreatedBy = run.CreatedBy,
+            CreatedAt = run.CreatedAt,
+            Status = run.Status,
+            StatusText = run.StatusText,
+            Jobs =
+            [
+                new PipelineJobView
+            {
+                RunId = run.Id,
+                JobId = "job",
+                Status = JobExecutionStatus.Pending
+            }
+            ]
+        };
 
+        _monitor.GetRunsAsync(
+                0,
+                50,
+                Arg.Any<CancellationToken>())
+            .Returns([summary]);
+
+        // Act
         var html = await Render<RunsPage>();
 
-        html.Should().Contain("&lt;Test&gt;").And.Contain("tester").And.Contain($"pipeline-runs/{run.Id}").And.Contain("Queued");
+        // Assert
+        html.Should().Contain("&lt;Test&gt;")
+            .And.Contain("tester")
+            .And.Contain($"pipeline/run/{run.Id}")
+            .And.Contain("Queued");
+
+        await _monitor.Received(1).GetRunsAsync(
+            0,
+            50,
+            Arg.Any<CancellationToken>());
+
+        await _monitor.DidNotReceive().GetExecutionAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
@@ -68,7 +106,7 @@ public class PageTests
     {
         // Arrange
         var run = Run(status);
-        _runtime.GetExecutionAsync(run.Id, Arg.Any<CancellationToken>()).Returns(new PipelineExecutionSnapshot(run, [], []));
+        _monitor.GetExecutionAsync(run.Id, Arg.Any<CancellationToken>()).Returns(new PipelineExecutionView(run, [], []));
 
         // Act
         var html = await Render<RunPage>(p => p.Add(x => x.RunId, run.Id));
@@ -96,9 +134,9 @@ public class PageTests
                 new(DateTimeOffset.UtcNow, "step") { JobId = "job", StepId = "step" }]
         };
 
-        _runtime
+        _monitor
             .GetExecutionAsync(run.Id, Arg.Any<CancellationToken>())
-            .Returns(new PipelineExecutionSnapshot(run,
+            .Returns(new PipelineExecutionView(run,
                 [new() { RunId = run.Id, JobId = "job", Status = JobExecutionStatus.Succeeded }],
                 [new() { RunId = run.Id, JobId = "job", StepId = "step", Status = StepExecutionStatus.Succeeded }]));
 
@@ -107,7 +145,7 @@ public class PageTests
 
         context.Services
             .GetRequiredService<NavigationManager>()
-            .NavigateTo($"http://localhost/pipeline-runs/{run.Id}{query}");
+            .NavigateTo($"http://localhost/pipeline/run/{run.Id}{query}");
 
         // Act
         var page = context.Render<RunPage>(p => p.Add(x => x.RunId, run.Id));
@@ -127,16 +165,16 @@ public class PageTests
         // Arrange
         var run = Run(PipelineStatus.Failed);
 
-        _runtime
+        _monitor
             .GetExecutionAsync(run.Id, Arg.Any<CancellationToken>())
-            .Returns(new PipelineExecutionSnapshot(run, [], []));
+            .Returns(new PipelineExecutionView(run, [], []));
 
         if (throws)
-            _runtime
+            _monitor
                 .RetryAsync(run.Id, CancellationToken.None)
                 .Returns(Task.FromException<bool>(new InvalidOperationException("private server detail")));
         else
-            _runtime
+            _monitor
                 .RetryAsync(run.Id, CancellationToken.None)
                 .Returns(accepted);
 
@@ -158,13 +196,13 @@ public class PageTests
                 page.Find("[role=alert]").TextContent.Should().Contain(throws ? "Could not request a retry" : "no longer eligible");
         });
 
-        _runtime
+        _monitor
             .Received(1)
             .RetryAsync(run.Id, CancellationToken.None);
 
         page.Markup.Should().NotContain("private server detail");
     }
-    private static PipelineRun Run(PipelineStatus status) => new()
+    private static PipelineRunView Run(PipelineStatus status) => new()
     {
         Id = Guid.NewGuid(),
         Definition = new("test", "Test"),
@@ -178,6 +216,28 @@ public class PageTests
             new(DateTimeOffset.UtcNow, "warning") { Level = PipelineLogLevel.Warning },
             new(DateTimeOffset.UtcNow, "error") { Level = PipelineLogLevel.Error }]
     };
+
+    [TestMethod]
+    public async Task Failed_initial_load_does_not_display_run_not_found()
+    {
+        // Arrange
+        var runId = Guid.NewGuid();
+
+        _monitor
+            .GetExecutionAsync(runId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<PipelineExecutionView?>(
+                new HttpRequestException("private connection detail")));
+
+        // Act
+        var html = await Render<RunPage>(parameters => parameters.Add(x => x.RunId, runId));
+
+        // Assert
+        html.Should()
+            .Contain("Pipeline run unavailable")
+            .And.Contain("Could not refresh pipeline data")
+            .And.NotContain("Run not found")
+            .And.NotContain("private connection detail");
+    }
 }
 
 

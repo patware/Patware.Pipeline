@@ -1,24 +1,34 @@
-﻿@page "/pipeline-runs/{RunId:guid}"
+@page "/pipeline/run/{RunId:guid}"
 @rendermode InteractiveServer
 @inherits LivePipelinePage
 
 @using Pipeline.Blazor.Components
-@using Pipeline.Runtime
+@using Pipeline.Contracts
 
 <PageTitle>@(run?.Title ?? "Pipeline run")</PageTitle>
 
 <p>
-    <a href="pipeline-runs">&larr; All pipeline runs</a>
+    <a href="pipeline">&larr; All pipeline runs</a>
 </p>
 
-@if (run is null)
+@if (RefreshError is not null)
+{
+    <p class="text-warning" role="alert">@RefreshError</p>
+}
+
+@if (run is null && !HasLoaded && RefreshError is null)
+{
+    <h1>Pipeline run</h1>
+    <p>Loading pipeline run…</p>
+}
+else if (run is null && RefreshError is not null)
+{
+    <h1>Pipeline run unavailable</h1>
+}
+else if (run is null)
 {
     <h1>Run not found</h1>
-
-    <p>
-        Run <code>@RunId</code> is not available.
-        In-memory runs are cleared when the application restarts.
-    </p>
+    <p>Run <code>@RunId</code> does not exist.</p>
 }
 else
 {
@@ -43,7 +53,7 @@ else
                 @run.Status
             </span>
 
-            @if (run.Status == global::Pipeline.Runtime.PipelineStatus.Failed)
+            @if (run.Status == global::Pipeline.Contracts.PipelineStatus.Failed)
             {
                 <button type="button"
                         class="btn btn-sm btn-outline-primary"
@@ -71,7 +81,7 @@ else
                         <span class="fw-bold">@run.CreatedBy</span>
                     </h2>
 
-                    <a href="@($"pipeline-runs/{RunId}#run-logs")"
+                    <a href="@($"pipeline/run/{RunId}#run-logs")"
                        class="btn btn-sm btn-outline-secondary">
                         View all run logs (@run.Logs.Count)
                     </a>
@@ -152,7 +162,7 @@ else
                          SelectedStepId is not null)
                     {
                         <a class="btn btn-sm btn-outline-light"
-                           href="@($"pipeline-runs/{RunId}#run-logs")">
+                           href="@($"pipeline/run/{RunId}#run-logs")">
                             View all run logs
                         </a>
                     }
@@ -207,7 +217,7 @@ else
 
 @code
 {
-    /// <summary>Gets or sets the run identifier supplied by the pipeline-runs route.</summary>
+    /// <summary>Gets or sets the run identifier supplied by the pipeline route.</summary>
     [Parameter]
     public Guid RunId { get; set; }
 
@@ -219,7 +229,7 @@ else
     [SupplyParameterFromQuery(Name = "step")]
     public string? SelectedStepId { get; set; }
 
-    private IReadOnlyList<StepExecutionState> steps = [];
+    private IReadOnlyList<PipelineStepView> steps = [];
 
     private string LogHeading =>
         SelectedJobId is null
@@ -229,8 +239,8 @@ else
                 : $"Step logs: {SelectedJobId} / {SelectedStepId}";
 
 
-    private global::Pipeline.Runtime.PipelineRun? run;
-    private IReadOnlyList<JobExecutionState> jobs = [];
+    private global::Pipeline.Contracts.PipelineRunView? run;
+    private IReadOnlyList<PipelineJobView> jobs = [];
 
     private bool _retrying;
     private string? _retryError;
@@ -263,7 +273,7 @@ else
         }
     }
 
-    private (PipelineLogEntry Entry, int Sequence)[] SelectLogs()
+    private (PipelineLogEntryView Entry, int Sequence)[] SelectLogs()
     {
         if (run is null || LogSelectionError is not null)
         {
@@ -283,21 +293,38 @@ else
             .ToArray();
     }
 
-    /// <summary>Loads run, job, and step state, discarding the result if navigation changed the run identifier.</summary>
-    /// <param name="cancellationToken">The token used to cancel snapshot loading.</param>
-    /// <returns>A task that completes after the current page snapshot is updated.</returns>
+    /// <summary>
+    /// Loads the current run and discards results for an earlier route.
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// The token used to cancel snapshot loading.
+    /// </param>
+    /// <returns>A task representing snapshot loading.</returns>    
     protected override async Task LoadSnapshotAsync(CancellationToken cancellationToken)
     {
         var requestedId = RunId;
 
-        var snapshot = await Runtime.GetExecutionAsync(requestedId, cancellationToken);
-
-        if (!cancellationToken.IsCancellationRequested && requestedId == RunId)
+        // Never display the previous run beneath a different run's URL.
+        if (run is not null && run.Id != requestedId)
         {
-            run = snapshot?.Run;
-            jobs = snapshot?.Jobs ?? [];
-            steps = snapshot?.Steps ?? [];
+            run = null;
+            jobs = [];
+            steps = [];
+            _retryError = null;
         }
+
+        var snapshot = await Monitor.GetExecutionAsync(requestedId, cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (requestedId != RunId)
+        {
+            return;
+        }
+
+        run = snapshot?.Run;
+        jobs = snapshot?.Jobs ?? [];
+        steps = snapshot?.Steps ?? [];
     }
 
     private static string FormatTimestamp(DateTimeOffset? timestamp)
@@ -305,24 +332,22 @@ else
         return timestamp?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz")
             ?? "—";
     }
-    private static string StatusClass(
-    global::Pipeline.Runtime.PipelineStatus status) =>
-    status switch
-    {
-        global::Pipeline.Runtime.PipelineStatus.Completed
-            => "text-bg-success",
+    private static string StatusClass(global::Pipeline.Contracts.PipelineStatus status) => status switch
+      {
+          global::Pipeline.Contracts.PipelineStatus.Completed
+              => "text-bg-success",
 
-        global::Pipeline.Runtime.PipelineStatus.Failed
-            => "text-bg-danger",
+          global::Pipeline.Contracts.PipelineStatus.Failed
+              => "text-bg-danger",
 
-        global::Pipeline.Runtime.PipelineStatus.Running
-            => "text-bg-primary",
+          global::Pipeline.Contracts.PipelineStatus.Running
+              => "text-bg-primary",
 
-        global::Pipeline.Runtime.PipelineStatus.Queued
-            => "text-bg-warning",
+          global::Pipeline.Contracts.PipelineStatus.Queued
+              => "text-bg-warning",
 
-        _ => "text-bg-secondary"
-    };
+          _ => "text-bg-secondary"
+      };
 
     private static string LogClass(PipelineLogLevel level) => level switch
     {
@@ -340,8 +365,8 @@ else
 
     /// <summary>Gets a one-second refresh interval for active runs, or the base interval for other states.</summary>
     protected override TimeSpan RefreshInterval => run?.Status is
-        global::Pipeline.Runtime.PipelineStatus.Queued or
-        global::Pipeline.Runtime.PipelineStatus.Running
+        global::Pipeline.Contracts.PipelineStatus.Queued or
+        global::Pipeline.Contracts.PipelineStatus.Running
         ? TimeSpan.FromSeconds(1)
         : base.RefreshInterval;
 
@@ -360,7 +385,7 @@ else
 
         try
         {
-            var accepted = await Runtime.RetryAsync(RunId);
+            var accepted = await Monitor.RetryAsync(RunId);
 
             if (!accepted)
             {

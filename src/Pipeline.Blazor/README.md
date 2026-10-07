@@ -4,7 +4,7 @@
 
 Turn background execution into a story your team can follow. Patware.Pipeline.Blazor adds workflow monitoring to your Blazor application: recent runs, job and step progress, polling countdowns, formatted logs, and a way to resume failed work.
 
-Built for the [Pipeline ecosystem](https://github.com/patware/Patware.Pipeline), it connects directly to `IPipelineRuntime` and brings execution state into your application's UI.
+Built for the [Pipeline ecosystem](https://github.com/patware/Patware.Pipeline), it connects directly to `IPipelineMonitor` and brings execution state into your application's UI.
 
 <!-- SCREENSHOT: Add a wide run-detail image showing job cards, a polling countdown, and colorful logs. Use an absolute public image URL for display on NuGet.org. -->
 
@@ -99,20 +99,20 @@ Replace `YourApp` with your host assembly name and use the Bootstrap path suppli
 
 ### 4. Open the dashboard
 
-Add a navigation link to `/pipeline-runs`, submit a workflow through your runtime, and follow it from the overview into its detail page.
+Add a navigation link to `/pipeline`, submit a workflow through your runtime, and follow it from the overview into its detail page.
 
 | Route | What you'll see |
 | --- | --- |
-| `/pipeline-runs` | The latest 50 runs, newest first. |
-| `/pipeline-runs/{RunId}` | Run metadata, job and step cards, logs, and retry controls for failed runs. |
-| `/pipeline-runs/{RunId}?job={JobId}` | Logs scoped to one job. |
-| `/pipeline-runs/{RunId}?job={JobId}&step={StepId}` | Logs scoped to one step within that job. |
+| `/pipeline` | The latest 50 runs, newest first. |
+| `/pipeline/run/{RunId}` | Run metadata, job and step cards, logs, and retry controls for failed runs. |
+| `/pipeline/run/{RunId}?job={JobId}` | Logs scoped to one job. |
+| `/pipeline/run/{RunId}?job={JobId}&step={StepId}` | Logs scoped to one step within that job. |
 
 <!-- SCREENSHOT: Add the run overview here. Use an absolute public image URL when embedding it. -->
 
 ## A dashboard that uses your execution stack
 
-The pages query and control the registered `IPipelineRuntime`. Use the built-in worker and in-memory storage for a small starting point, or companion providers for SQL Server persistence and Hangfire processing.
+The pages query and control the registered `IPipelineMonitor`. Use the built-in worker and in-memory storage for a small starting point, or companion providers for SQL Server persistence and Hangfire processing.
 
 With in-memory storage, history disappears when the process ends. Database-backed deployments retain history according to your storage management. Retry availability depends on the run state and the original workflow definition remaining registered.
 

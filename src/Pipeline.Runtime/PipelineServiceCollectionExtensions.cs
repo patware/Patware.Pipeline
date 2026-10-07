@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using Pipeline.Contracts;
 using Pipeline.Core;
 
 namespace Pipeline.Runtime;
@@ -107,6 +108,8 @@ public static class PipelineServiceCollectionExtensions
         services.TryAddScoped<IPipelineStepContext>(provider => provider.GetRequiredService<PipelineStepContext>());
 
         services.TryAddScoped<PipelineRetryService>();
+
+        services.TryAddScoped<IPipelineMonitor, LocalPipelineMonitor>();
 
         services.AddHostedService<PipelineRunEventDispatcher>();
     }

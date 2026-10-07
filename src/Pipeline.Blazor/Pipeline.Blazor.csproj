@@ -23,16 +23,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Pipeline.Core\Pipeline.Core.csproj" />
-    <ProjectReference Include="..\Pipeline.Runtime\Pipeline.Runtime.csproj" />
+    <ProjectReference Include="..\Pipeline.Contracts\Pipeline.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

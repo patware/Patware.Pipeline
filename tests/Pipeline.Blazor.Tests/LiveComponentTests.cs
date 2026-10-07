@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Pipeline.Blazor.Components;
 using Pipeline.Blazor.Pages;
-using Pipeline.Runtime;
+using Pipeline.Contracts;
 
 namespace Pipeline.Blazor.Tests;
 
@@ -36,14 +36,14 @@ public class LiveComponentTests
         context.Services.AddSingleton(clock);
 
         var id = Guid.NewGuid();
-        var job = new JobExecutionState
+        var job = new PipelineJobView
         {
             RunId = id,
             JobId = "job",
             Status = JobExecutionStatus.Running,
             StartedAt = now
         };
-        var step = new StepExecutionState
+        var step = new PipelineStepView
         {
             RunId = id,
             JobId = "job",
@@ -72,6 +72,16 @@ public class LiveComponentTests
         public Func<CancellationToken, Task> Load { get; set; } = _ => Task.CompletedTask;
 
         public Task Reload(CancellationToken token = default) => ReloadAsync(token);
+
+        /// <summary>
+        /// Gets whether snapshot loading completed successfully.
+        /// </summary>
+        public bool Loaded => HasLoaded;
+
+        /// <summary>
+        /// Gets the current user-facing loading error.
+        /// </summary>
+        public string? LoadingError => RefreshError;
 
         protected override Task LoadSnapshotAsync(CancellationToken cancellationToken) => Load(cancellationToken);
     }
@@ -143,5 +153,47 @@ public class LiveComponentTests
         };
 
         await page.Reload(new CancellationToken(true));
+    }
+
+    [TestMethod]
+    public async Task Failed_reload_preserves_data_and_later_reload_recovers()
+    {
+        // Arrange
+        var attempts = 0;
+        var publishedValue = 0;
+
+        await using var page = new TestPage
+        {
+            Load = _ =>
+            {
+                attempts++;
+
+                if (attempts == 2)
+                {
+                    throw new HttpRequestException(
+                        "private connection detail");
+                }
+
+                publishedValue = attempts;
+                return Task.CompletedTask;
+            }
+        };
+
+        // Act
+        await page.Reload(TestContext.CancellationToken);
+        await page.Reload(TestContext.CancellationToken);
+
+        // Assert
+        page.Loaded.Should().BeTrue();
+        page.LoadingError.Should().NotBeNull();
+        publishedValue.Should().Be(1);
+
+        // Act
+        await page.Reload(TestContext.CancellationToken);
+
+        // Assert
+        page.Loaded.Should().BeTrue();
+        page.LoadingError.Should().BeNull();
+        publishedValue.Should().Be(3);
     }
 }

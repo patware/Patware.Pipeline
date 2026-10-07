@@ -1,4 +1,4 @@
-@using Pipeline.Runtime
+@using Pipeline.Contracts
 
 @if (Jobs.Count == 0)
 {
@@ -79,7 +79,7 @@ else
     /// Gets or sets the jobs in their desired display order.
     /// </summary>
     [Parameter, EditorRequired]
-    public IReadOnlyList<JobExecutionState> Jobs { get; set; } = [];
+    public IReadOnlyList<PipelineJobView> Jobs { get; set; } = [];
 
     private static string StatusLabel(JobExecutionStatus status) =>
         status switch
@@ -103,7 +103,7 @@ else
             _ => "status-unknown"
         };
 
-    private static string LogUrl(JobExecutionState job) =>
-        $"pipeline-runs/{job.RunId}" +
+    private static string LogUrl(PipelineJobView job) =>
+        $"pipeline/run/{job.RunId}" +
         $"?job={Uri.EscapeDataString(job.JobId)}#run-logs";
 }

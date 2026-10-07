@@ -1,4 +1,4 @@
-﻿@page "/lineManagment"
+@page "/lineManagment"
 @rendermode InteractiveServer
 
 @implements IAsyncDisposable
@@ -62,7 +62,7 @@
             <tr @key="run.Id">
                 <td>@run.Id</td>
                 <td>
-                    <a href="@($"pipeline-runs/{run.Id}")">@run.Title</a>
+                    <a href="@($"pipeline/run/{run.Id}")">@run.Title</a>
                 </td>
                 <td>@run.CreatedAt.ToLocalTime().ToString("g")</td>
                 <td>@run.CreatedBy</td>

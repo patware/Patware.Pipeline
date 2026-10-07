@@ -1,4 +1,4 @@
-﻿@page "/simulator"
+@page "/simulator"
 @rendermode InteractiveServer
 
 @using System.Globalization
@@ -330,7 +330,7 @@
             var request = FormattingPipeline.Build(createdBy);
             var run = await PipelineRuntime.EnqueueAsync(request);
 
-            Navigation.NavigateTo($"/pipeline-runs/{run.Id}");
+            Navigation.NavigateTo($"pipeline/run/{run.Id}");
         }
         catch (Exception exception)
         {

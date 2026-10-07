@@ -241,10 +241,10 @@ The Blazor library turns execution state into something people can follow:
 - **Readable output:** log levels and ANSI formatting bring context to the console.
 - **Recovery controls:** failed runs expose a **Re-run from failure** action.
 
-<!-- SCREENSHOT: Add the run overview here. Suggested asset: docs/images/pipeline-runs.png. -->
+<!-- SCREENSHOT: Add the run overview here. Suggested asset: docs/images/pipeline.runs.png. -->
 <!-- SCREENSHOT: Add a failed run with the retry button and filtered step logs here. Suggested asset: docs/images/pipeline-retry.png. -->
 
-The demo host shows how to [register the Blazor assembly and interactive server rendering](src/Pipeline.Web/Program.cs). Its monitoring routes are `/pipeline-runs` and `/pipeline-runs/{RunId}`.
+The demo host shows how to [register the Blazor assembly and interactive server rendering](src/Pipeline.Web/Program.cs). Its monitoring routes are `/pipeline` and `/pipeline/run/{RunId}`.
 
 ## See it in action
 
@@ -262,7 +262,7 @@ To run the demo:
 
 The host automatically prepares Pipeline and Hangfire storage. The configured SQL Server identity needs permission to create and update their database objects.
 
-Open the application URL printed by the host and visit `/simulator`. Follow submitted workflows at `/pipeline-runs`. In Development, the Hangfire dashboard is available at `/hangfire`.
+Open the application URL printed by the host and visit `/simulator`. Follow submitted workflows at `/pipeline`. In Development, the Hangfire dashboard is available at `/hangfire`.
 
 <!-- SCREENSHOT: Add the directory simulator here, ideally alongside a run waiting for synchronization. Suggested asset: docs/images/pipeline-simulator.png. -->
 

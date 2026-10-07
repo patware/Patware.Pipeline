@@ -1,5 +1,7 @@
 using Hangfire;
 
+using Pipeline.AspNetCore;
+using Pipeline.Blazor;
 using Pipeline.Hangfire;
 using Pipeline.Persistence.EntityFrameworkCore;
 using Pipeline.Runtime;
@@ -104,8 +106,11 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+app.MapPipelineEndpoints();
+
 app.MapRazorComponents<App>()
-    .AddAdditionalAssemblies(typeof(global::Pipeline.Blazor.Pages.LivePipelinePage).Assembly)
+    .AddPipelinePages()
     .AddInteractiveServerRenderMode();
 
 app.Run();

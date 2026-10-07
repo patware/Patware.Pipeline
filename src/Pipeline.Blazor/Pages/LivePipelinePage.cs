@@ -1,50 +1,95 @@
-﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
+
+using Pipeline.Contracts;
 
 namespace Pipeline.Blazor.Pages;
 
 /// <summary>
-/// Provides serialized snapshot loading and periodic refresh for pipeline pages, stopping refresh on disposal.
+/// Serializes snapshot loading and refreshes pipeline pages periodically.
 /// </summary>
+/// <remarks>Snapshot failures are handled at the page boundary and logged. The timer remains active. Exceptions are not displayed verbatim.
+/// </remarks>
 public abstract class LivePipelinePage : ComponentBase, IAsyncDisposable
 {
     /// <summary>
-    /// Gets the injected runtime used to query and control pipeline runs.
+    /// Gets the service used to query runs and request retries.
     /// </summary>
     [Inject]
-    protected Pipeline.Runtime.IPipelineRuntime Runtime { get; set; } = default!;
+    protected IPipelineMonitor Monitor { get; set; } = default!;
+
+    /// <summary>
+    /// Gets the logger used to record snapshot-loading failures.
+    /// </summary>
+    /// <remarks>
+    /// The null-conditional logger call also accommodates your existing tests that construct TestPage directly without component injection.
+    /// </remarks>
+    [Inject]
+    protected ILogger<LivePipelinePage> Logger { get; set; } = default!;
 
     private readonly CancellationTokenSource _refreshCancellation = new();
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+
     private Task? _refreshTask;
 
     /// <summary>
-    /// Gets the periodic refresh interval; the default is twenty seconds.
+    /// The parameter version prevents a slow operation for an earlier route from changing the loading/error state of the new route. Derived pages must still discard their stale data, as your detail page already does.
     /// </summary>
-    /// <remarks>Override with a positive interval. The timer starts after the first render and picks up interval changes after each refresh.</remarks>
+    private long _parameterVersion;
+
+    /// <summary>
+    /// Gets whether a snapshot load completed successfully for the
+    /// current component parameters.
+    /// </summary>
+    /// <remarks>
+    /// A successful load can report that the requested run does not exist.    
+    /// </remarks>
+    protected bool HasLoaded { get; private set; }
+
+    /// <summary>
+    /// Gets the user-facing message for the latest loading failure,
+    /// or null when no loading error is present.
+    /// </summary>
+    protected string? RefreshError { get; private set; }
+
+    /// <summary>
+    /// Gets the interval between refresh attempts.
+    /// </summary>
     protected virtual TimeSpan RefreshInterval => TimeSpan.FromSeconds(20);
 
     /// <summary>
-    /// Loads the page's current data; called by serialized lifecycle and periodic refresh operations.
+    /// Loads and publishes the page's current snapshot.
     /// </summary>
-    /// <param name="cancellationToken">The token used to cancel this operation.</param>
-    /// <returns>A task that completes after the page snapshot has been updated.</returns>
-    /// <remarks>Implementations should observe cancellation and avoid publishing stale data if route parameters changed while loading.</remarks>
+    /// <param name="cancellationToken">
+    /// The token used to cancel loading.
+    /// </param>
+    /// <returns>A task representing snapshot loading.</returns>
+    /// <remarks>
+    /// Publish replacement data only after loading succeeds.
+    /// Discard results when route parameters changed during loading.
+    /// </remarks>
     protected abstract Task LoadSnapshotAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Reloads the page snapshot when component parameters change.
+    /// Loads a snapshot when component parameters change.
     /// </summary>
-    /// <returns>A task representing the serialized snapshot load.</returns>
+    /// <returns>A task representing the serialized load.</returns>
     protected override Task OnParametersSetAsync()
     {
+        _parameterVersion++;
+        HasLoaded = false;
+        RefreshError = null;
+
         return ReloadAsync(_refreshCancellation.Token);
     }
 
     /// <summary>
     /// Starts periodic refresh after the first render.
     /// </summary>
-    /// <param name="firstRender">Whether this is the component's first render.</param>
-    /// <returns>A completed lifecycle task; the refresh loop runs separately.</returns>
+    /// <param name="firstRender">
+    /// Whether this is the component's first render.
+    /// </param>
+    /// <returns>A completed lifecycle task.</returns>
     protected override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -56,11 +101,18 @@ public abstract class LivePipelinePage : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// Serializes snapshot loads and suppresses cancellation requested through the supplied token.
+    /// Serializes loading and records failures while preserving
+    /// the previously published snapshot.
     /// </summary>
-    /// <param name="cancellationToken">The token used to cancel this operation.</param>
-    /// <returns>A task that completes when loading finishes or the supplied token cancels it.</returns>
-    protected async Task ReloadAsync(CancellationToken cancellationToken)
+    /// <param name="cancellationToken">
+    /// The token used to cancel the operation.
+    /// </param>
+    /// <returns>
+    /// A task that completes after loading, failure handling,
+    /// or cancellation.
+    /// </returns>
+    protected async Task ReloadAsync(
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -68,8 +120,40 @@ public abstract class LivePipelinePage : ComponentBase, IAsyncDisposable
 
             try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await LoadSnapshotAsync(cancellationToken);
+                var requestedVersion = _parameterVersion;
+
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    await LoadSnapshotAsync(cancellationToken);
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (requestedVersion == _parameterVersion)
+                    {
+                        HasLoaded = true;
+                        RefreshError = null;
+                    }
+                }
+                catch (OperationCanceledException)
+                    when (cancellationToken.IsCancellationRequested)
+                {
+                    // Cancellation does not represent a loading failure.
+                }
+                catch (Exception exception)
+                {
+                    Logger?.LogError(
+                        exception,
+                        "Could not load the pipeline page snapshot.");
+
+                    if (requestedVersion == _parameterVersion)
+                    {
+                        RefreshError =
+                            "Could not refresh pipeline data. " +
+                            "The page will try again automatically.";
+                    }
+                }
             }
             finally
             {
@@ -79,11 +163,12 @@ public abstract class LivePipelinePage : ComponentBase, IAsyncDisposable
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
         {
-            // The component was disposed.
+            // Loading was cancelled while waiting for another load.
         }
     }
 
-    private async Task RefreshAsync(CancellationToken cancellationToken)
+    private async Task RefreshAsync(
+        CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(RefreshInterval);
 
@@ -103,17 +188,32 @@ public abstract class LivePipelinePage : ComponentBase, IAsyncDisposable
                 });
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
         {
             // The component was disposed.
         }
     }
 
     /// <summary>
-    /// Cancels periodic refresh and waits for background and lifecycle-triggered snapshot loads to finish.
+    /// Releases page resources and suppresses finalization.
     /// </summary>
-    /// <returns>A task that completes after cleanup finishes.</returns>
+    /// <returns>A task representing asynchronous cleanup.</returns>
     public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Cancels refresh and waits for outstanding loads before
+    /// releasing the cancellation source.
+    /// </summary>
+    /// <returns>A task representing resource cleanup.</returns>
+    /// <remarks>
+    /// Overrides must call and await the base implementation.
+    /// </remarks>
+    protected virtual async ValueTask DisposeAsyncCore()
     {
         _refreshCancellation.Cancel();
 
@@ -123,14 +223,18 @@ public abstract class LivePipelinePage : ComponentBase, IAsyncDisposable
             {
                 await _refreshTask;
             }
-
-            // Wait for any lifecycle-triggered load to finish as well.
-            await _refreshGate.WaitAsync();
-            _refreshGate.Release();
         }
         finally
         {
-            _refreshCancellation.Dispose();
+            try
+            {
+                await _refreshGate.WaitAsync();
+                _refreshGate.Release();
+            }
+            finally
+            {
+                _refreshCancellation.Dispose();
+            }
         }
     }
 }

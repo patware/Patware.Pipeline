@@ -1,4 +1,4 @@
-﻿@using Pipeline.Runtime
+@using Pipeline.Contracts
 @implements IAsyncDisposable
 @inject TimeProvider Clock
 
@@ -123,11 +123,11 @@
 @code {
     /// <summary>Gets or sets the jobs to display, in the desired card order.</summary>
     [Parameter, EditorRequired]
-    public IReadOnlyList<JobExecutionState> Jobs { get; set; } = [];
+    public IReadOnlyList<PipelineJobView> Jobs { get; set; } = [];
 
     /// <summary>Gets or sets the steps used to display each job's polling progress and log links.</summary>
     [Parameter, EditorRequired]
-    public IReadOnlyList<StepExecutionState> Steps { get; set; } = [];
+    public IReadOnlyList<PipelineStepView> Steps { get; set; } = [];
 
     private readonly CancellationTokenSource _clockCancellation = new();
     private Task? _clockTask;
@@ -245,8 +245,8 @@
         }
     }
     private string? PollStatus(
-        JobExecutionState job,
-        StepExecutionState step)
+        PipelineJobView job,
+        PipelineStepView step)
     {
         // A failed or blocked job can retain an unfinished step.
         if (job.Status != JobExecutionStatus.Running ||
@@ -302,7 +302,7 @@
         string jobId,
         string? stepId = null)
     {
-        var url = $"pipeline-runs/{runId}?job={Uri.EscapeDataString(jobId)}";
+        var url = $"pipeline/run/{runId}?job={Uri.EscapeDataString(jobId)}";
 
         if (stepId is not null)
         {
