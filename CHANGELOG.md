@@ -5,7 +5,10 @@ published releases are identified by package and release date below.
 
 ## Unreleased
 
-No changes recorded after the 0.3.0 release preparation.
+### Changed
+
+- Centralized NuGet package release-note links so all eight libraries
+  point to the GitHub release matching their package version.
 
 ## 0.3.0 - 2026.10.08
 
