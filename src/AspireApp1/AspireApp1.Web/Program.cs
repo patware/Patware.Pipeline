@@ -1,6 +1,9 @@
 using AspireApp1.Web;
 using AspireApp1.Web.Components;
 
+using Pipeline.Blazor;
+using Pipeline.HttpClient;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
@@ -10,6 +13,8 @@ builder.AddRedisOutputCache("cache");
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddPipelineClient(new Uri("https+http://apiservice"));
 
 builder.Services.AddHttpClient<WeatherApiClient>(client =>
     {
@@ -28,14 +33,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAntiforgery();
-
 app.UseOutputCache();
 
 app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
+    .AddPipelinePages()
     .AddInteractiveServerRenderMode();
 
 app.MapDefaultEndpoints();

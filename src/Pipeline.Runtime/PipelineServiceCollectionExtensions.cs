@@ -3,6 +3,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Pipeline.Contracts;
 using Pipeline.Core;
+using Pipeline.Core.Pipelines;
+using Pipeline.Core.Steps;
+using Pipeline.Runtime.Hosting;
+using Pipeline.Runtime.Pipelines;
 
 namespace Pipeline.Runtime;
 
@@ -11,24 +15,15 @@ namespace Pipeline.Runtime;
 /// </summary>
 public static class PipelineServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers pipeline services once, defaulting to in-memory persistence and the built-in hosted worker.
-    /// </summary>
-    /// <param name="services">The service collection receiving pipeline registrations.</param>
-    /// <param name="configure">The optional callback selecting persistence and processing before registration is frozen.</param>
-    /// <returns>The service collection for further registration.</returns>
-    /// <exception cref="InvalidOperationException">Pipeline services have already been registered.</exception>
     /// <remarks>
-    /// Register step service types and <see cref="IPipelineDefinitionRegistration" /> implementations separately.
-    /// Every persisted definition ID and version must remain registered so queued and recovered runs can restore their plans.
-    /// Persistence and processing are selected in the same callback and the options are frozen when it returns.
+    /// Configures endpoint discovery for pipeline pages.
+    /// Use PipelineRouter for automatic component-router discovery,
+    /// or include the pipeline assembly in the host Router's
+    /// AdditionalAssemblies parameter.
     /// </remarks>
     /// <example>
     /// <code>
     /// services.AddPipeline();
-    /// services.AddTransient&lt;Pipeline.Core.Steps.LogFormattingStep&gt;();
-    /// services.AddTransient&lt;Pipeline.Core.Pipelines.LogFormattingPipeline&gt;();
-    /// services.AddTransient&lt;IPipelineDefinitionRegistration, Pipeline.Runtime.Pipelines.LogFormattingRegistration&gt;();
     /// </code>
     /// </example>
     public static IServiceCollection AddPipeline(
@@ -72,13 +67,17 @@ public static class PipelineServiceCollectionExtensions
             RegisterBuiltInProcessor(services);
         }
 
+        if (options.RunLogFormattingDemoOnStartup)
+        {
+            services.AddHostedService<LogFormattingDemoStartupService>();
+        }
+
         services.AddSingleton(new PipelineRegistrationMarker());
 
         return services;
     }
 
-    private static void RegisterSharedServices(
-        IServiceCollection services)
+    private static void RegisterSharedServices(IServiceCollection services)
     {
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
 
@@ -112,10 +111,11 @@ public static class PipelineServiceCollectionExtensions
         services.TryAddScoped<IPipelineMonitor, LocalPipelineMonitor>();
 
         services.AddHostedService<PipelineRunEventDispatcher>();
+
+        RegisterBuiltInDefinitions(services);
     }
 
-    private static void RegisterInMemoryPersistence(
-        IServiceCollection services)
+    private static void RegisterInMemoryPersistence(IServiceCollection services)
     {
         services.TryAddSingleton<InMemoryPipelineStore>();
 
@@ -138,6 +138,20 @@ public static class PipelineServiceCollectionExtensions
             provider.GetRequiredService<PipelineRuntime>());
 
         services.AddHostedService<PipelineWorker>();
+    }
+
+    private static void RegisterBuiltInDefinitions(IServiceCollection services)
+    {
+        services.TryAddTransient<global::NoOpStep>();
+        services.TryAddTransient<global::ExampleStep>();
+
+        services.TryAddTransient<LogFormattingStep>();
+        services.TryAddTransient<LogFormattingPipeline>();
+
+        services.TryAddEnumerable(
+            ServiceDescriptor.Transient<
+                IPipelineDefinitionRegistration,
+                LogFormattingRegistration>());
     }
 
     private sealed class PipelineRegistrationMarker

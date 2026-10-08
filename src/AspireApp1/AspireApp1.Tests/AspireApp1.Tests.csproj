@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AspireApp1.AppHost\AspireApp1.AppHost.csproj" />
+    <ProjectReference Include="..\..\Pipeline.Contracts\Pipeline.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
