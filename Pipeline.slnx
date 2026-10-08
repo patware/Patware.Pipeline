@@ -23,6 +23,7 @@
     <Project Path="src/Pipeline.Web/Pipeline.Web.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
