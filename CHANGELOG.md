@@ -7,7 +7,7 @@ published releases are identified by package and release date below.
 
 No changes recorded after the 0.3.0 release preparation.
 
-## 0.3.0 - Pending publication
+## 0.3.0 - 2026.10.08
 
 ### Added
 
