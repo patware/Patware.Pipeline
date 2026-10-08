@@ -15,11 +15,19 @@ namespace Pipeline.Runtime;
 /// </summary>
 public static class PipelineServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers pipeline services, built-in definitions, and the selected persistence and processor.
+    /// </summary>
+    /// <param name="services">The collection receiving pipeline registrations.</param>
+    /// <param name="configure">The optional callback selecting providers and startup demonstration behaviour.</param>
+    /// <returns>The service collection for further registration.</returns>
+    /// <exception cref="InvalidOperationException">Pipeline services have already been registered.</exception>
     /// <remarks>
-    /// Configures endpoint discovery for pipeline pages.
-    /// Use PipelineRouter for automatic component-router discovery,
-    /// or include the pipeline assembly in the host Router's
-    /// AdditionalAssemblies parameter.
+    /// Built-in steps and the log-formatting definition are registered automatically.
+    /// Register application-defined steps and definition versions separately.
+    /// Options become immutable after the configuration callback completes.
+    /// Defaults select in-memory persistence and the built-in hosted worker.
+    /// Rendering and remote monitoring are configured in their respective libraries.
     /// </remarks>
     /// <example>
     /// <code>

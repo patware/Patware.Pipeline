@@ -1,26 +1,40 @@
 # Blazor integration
 
-`Pipeline.Blazor` queries `IPipelineRuntime`. The demo uses interactive server rendering. Add its assembly to both endpoint discovery and Router `AdditionalAssemblies`, following [Program.cs](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Web/Program.cs) and [Routes.razor](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Web/Components/Routes.razor).
+Pipeline.Blazor consumes Pipeline.Contracts.IPipelineMonitor through server-side DI. Use AddPipeline for a local executor/renderer or AddPipelineClient for a remote renderer. Blazor has no Runtime or Core dependency.
 
-| Route | Behavior |
+## Discovery
+
+Call AddPipelinePages on the MapRazorComponents builder, followed by AddInteractiveServerRenderMode. Use PipelineRouter in Routes.razor to include library pages while retaining your layout and route handling. A framework Router may alternatively set AdditionalAssemblies explicitly.
+
+See the [package integration examples](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Blazor/README.md).
+
+| Route | Behaviour |
 | --- | --- |
-| `/pipeline-runs` | Latest 50 runs and execution snapshots; 20-second refresh |
-| `/pipeline-runs/{RunId:guid}` | Jobs, steps, logs; one-second active and 20-second terminal refresh |
+| /pipeline | Latest 50 summaries and ordered job statuses; 20-second refresh. |
+| /pipeline/run/{RunId:guid} | Jobs, steps, logs; one-second active and 20-second inactive refresh. |
+
+Bootstrap 5 and the host's generated CSS isolation bundle supply the styles.
 
 ## Lifecycle
 
-`LivePipelinePage` loads on parameter changes and starts a periodic timer after first render. It serializes loads, invokes rendering through `InvokeAsync`, and cancels/awaits work on disposal. Detail loads discard results if navigation changed `RunId` during the request. Preserve these protections.
+LivePipelinePage serializes snapshot loads, loads on parameter changes, starts periodic refresh after rendering, and cancels/awaits refresh during async disposal. It suppresses finalization as part of DisposeAsync.
 
-The UI polls rather than consuming lifecycle events. Handler scopes differ from circuit scopes. Event-driven UI would require an application notification service and cross-process transport where applicable.
+Loading failures are logged and expose a generic error while retaining previously published data. The timer continues. Parameter versions protect loading/error state; detail loads discard data when navigation changed RunId during a request.
+
+Keep these protections when adding pages. A missing run, a loading failure, and a pending initial load are different states.
 
 ## Logs and retry
 
-Detail supports `?job=...&step=...`. Step selection requires a valid job/step; invalid filters display errors. Filtered logs retain original sequence numbering. Escape query values when constructing links.
+Detail supports ?job=...&step=.... Step selection requires a valid job/step. Invalid filters display errors and filtered logs retain their original numbering. Escape query values when constructing links.
 
-`AnsiLogText` converts supported formatting to spans while Razor encodes text. Do not render messages with raw HTML or `MarkupString`. Test malformed ANSI, hostile text, whitespace, and resets when changing rendering.
+AnsiLogText converts supported formatting into spans while Razor encodes text. Never render messages with raw HTML or MarkupString. Test malformed controls, hostile text, whitespace, and resets.
 
-Failed-run retry disables duplicate clicks, handles false returns/exceptions, and reloads state. Preserve missing-run, empty-log, and invalid-filter presentation. A click is not evidence that retry succeeded.
+Retry disables duplicate clicks and handles false returns or exceptions. HTTP retry commands are not automatically replayed. Hosts still own authorization for viewing and retrying runs.
 
-Components do not enforce authorization; hosts protect queries and mutations. Full snapshots/logs and per-run list loading may grow expensive; refresh-rate changes alone do not provide server-side log pagination.
+## Distributed limits
 
-Sources: [base page](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Blazor/Pages/LivePipelinePage.cs), [detail](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Blazor/Pages/PipelineRun.razor), [list](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Blazor/Pages/PipelineRuns.razor.cs), [ANSI component](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Blazor/Components/AnsiLogText.razor), [page tests](https://github.com/patware/Patware.Pipeline/blob/main/tests/Pipeline.Blazor.Tests/PageTests.cs).
+The UI polls the monitor rather than consuming lifecycle events. Process-local handler scopes differ from circuit scopes, and events are not a cross-process bus.
+
+Use sticky frontend sessions and shared Data Protection keys for multiple Interactive Server replicas. Existing circuits do not move to another pod after failure.
+
+Summaries omit logs and step details, but the backend still loads snapshots per listed run; detail logs remain unbounded. See [distributed hosting](../architecture/DISTRIBUTED-HOSTING.md).

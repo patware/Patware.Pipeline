@@ -4,7 +4,9 @@ Follow [.editorconfig](https://github.com/patware/Patware.Pipeline/blob/main/.ed
 
 ## Layer ownership
 
-Place graph validation/contracts in Core; orchestration and provider-neutral state in Runtime; EF entities/migrations in Persistence; scheduling in Hangfire; reusable rendering in Blazor; business actions/configuration in the consuming host. Keep web/database/scheduler dependencies out of Core.
+Place graph validation in Core; display contracts in Contracts; orchestration and provider-neutral state in Runtime; HTTP endpoints in AspNetCore; remote monitoring in HttpClient; EF entities/migrations in Persistence; scheduling in Hangfire; rendering in Blazor; business actions/configuration in the host. Keep executor/web/database/scheduler dependencies out of Contracts and transport dependencies out of Core.
+
+Include XML documentation for public/protected members and design justification in remarks where useful. Tests use Arrange, Act, and Assert comments and propagate TestContext.CancellationToken to asynchronous operations.
 
 ## Adding a workflow
 

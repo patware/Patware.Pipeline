@@ -14,6 +14,10 @@ This source-derived record explains current choices and consequences. It does no
 | Library-owned startup migrations | Simple host configuration | Startup needs schema rights and upgrade validation |
 | Process-local event channel | Simple scoped lifecycle handlers | Crash loss and no handler replay |
 | Periodic Blazor reads | Provider-neutral UI | Repeated full snapshots/logs can be costly |
+| Transport-independent monitoring views | Renderer avoids executor dependencies | Display and runtime enums are distinct; no general submission protocol |
+| Library-owned HTTP endpoints and client | Minimal consumer transport code | Host owns authentication, authorization, and service addressing |
+| Disable automatic unsafe-method retries | Avoid replaying retry commands | Inherited policies must be removed before adding the client policy |
+| PipelineRouter wrapper | Hide assembly discovery while retaining host layout | Endpoint discovery still uses AddPipelinePages |
 
 Changing a choice requires explicit contract and compatibility work. Per-run gates need a revised reset protocol; durable events need atomic persistence/delivery; graph evolution needs historical restoration support.
 

@@ -84,52 +84,51 @@ The complete demo also polls for enterprise voice enablement after applying the 
 | Library | What it brings |
 | --- | --- |
 | [Pipeline.Core](src/Pipeline.Core) | Fluent graph building, dependencies, conditions, typed outputs, and versioned definitions. |
+| [Pipeline.Contracts](src/Pipeline.Contracts) | Transport-independent monitoring interface, display enums, summaries, and execution views. |
 | [Pipeline.Runtime](src/Pipeline.Runtime) | Dependency injection, submission, execution coordination, run queries, and manual retry. Includes in-memory storage and a hosted worker. |
 | [Pipeline.Persistence.EntityFrameworkCore](src/Pipeline.Persistence.EntityFrameworkCore) | SQL Server persistence for run data, execution state, outputs, and logs through EF Core. |
 | [Pipeline.Hangfire](src/Pipeline.Hangfire) | Hangfire processing, scheduled work, and startup recovery of unfinished runs. |
 | [Pipeline.Blazor](src/Pipeline.Blazor) | Run overview and detail pages, job cards, periodically refreshed progress, and ANSI-formatted logs. |
+| [Pipeline.AspNetCore](src/Pipeline.AspNetCore) | Library-owned HTTP monitoring and retry endpoints for an executor host. |
+| [Pipeline.HttpClient](src/Pipeline.HttpClient) | Remote monitoring client for a separate renderer host. |
 
-The libraries currently target **.NET 10**. [Patware.Pipeline.Core 0.2.0](https://www.nuget.org/packages/Patware.Pipeline.Core/0.2.0) is published on NuGet.org.
+The libraries target **.NET 10**. The shared version is **0.3.0**, prepared for publication; the public API remains pre-1.0. See [release and upgrade notes](CHANGELOG.md). Examples targeting 0.3.0 require that version on your chosen package feed.
 
 ### Package dependencies
 
-Arrows point from a package to its direct dependencies within the five-package
+Arrows point from a package to its direct dependencies within the eight-package
 Pipeline family. External dependencies are omitted.
 
 ```mermaid
 flowchart TD
-    Blazor["Patware.Pipeline.Blazor"] --> Runtime["Patware.Pipeline.Runtime"]
-    Blazor --> Core["Patware.Pipeline.Core"]
+    Blazor["Patware.Pipeline.Blazor"] --> Contracts["Patware.Pipeline.Contracts"]
+    AspNetCore["Patware.Pipeline.AspNetCore"] --> Contracts
+    HttpClient["Patware.Pipeline.HttpClient"] --> Contracts
     Hangfire["Patware.Pipeline.Hangfire"] --> Runtime
     Persistence["Patware.Pipeline.Persistence.EntityFrameworkCore"] --> Runtime
     Runtime --> Core
+    Runtime --> Contracts
 ```
 
 Runtime brings in Core transitively for Hangfire and Entity Framework Core
-persistence. Blazor references both Runtime and Core directly. Choose the
+persistence. Blazor references Contracts and can use local or remote monitoring. Choose the
 processing, persistence, and UI packages independently to suit your application.
 
 ## Your first run
 
 Start with the included log-formatting pipeline to see registration, submission, and execution without writing a definition first.
 
-Reference [Pipeline.Runtime](src/Pipeline.Runtime/Pipeline.Runtime.csproj) from a .NET 10 application using the .NET Generic Host, then register the runtime, step service, definition, and restoration registration:
+Reference [Pipeline.Runtime](src/Pipeline.Runtime/Pipeline.Runtime.csproj) from a .NET 10 application using the .NET Generic Host. Built-in steps and the log-formatting definition are registered automatically:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Pipeline.Core.Pipelines;
-using Pipeline.Core.Steps;
 using Pipeline.Runtime;
-using Pipeline.Runtime.Pipelines;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddPipeline();
-builder.Services.AddTransient<LogFormattingStep>();
-builder.Services.AddTransient<LogFormattingPipeline>();
-builder.Services.AddTransient<
-    IPipelineDefinitionRegistration, LogFormattingRegistration>();
 
 using var host = builder.Build();
 await host.StartAsync();
@@ -151,6 +150,8 @@ await host.WaitForShutdownAsync();
 ```
 
 `AddPipeline()` selects in-memory persistence and the built-in background worker. The running host processes queued work; in-memory run history lasts for the lifetime of the process.
+
+For an automatic demonstration at startup, use `AddPipeline(options => options.RunLogFormattingDemoOnStartup = true)`. The option defaults to false and submits a new run for every enabled host startup.
 
 For your own workflow, register its step services and an `IPipelineDefinitionRegistration` that rebuilds the plan from its persisted definition ID, version, inputs, and settings. The [demo definition](src/Pipeline.Web/Pipelines/AssignLineEmployeeDefinition.cs) and its [registration](src/Pipeline.Web/Pipelines/AssignLineEmployeeRegistration.cs) show the complete pattern.
 
@@ -244,11 +245,53 @@ The Blazor library turns execution state into something people can follow:
 <!-- SCREENSHOT: Add the run overview here. Suggested asset: docs/images/pipeline.runs.png. -->
 <!-- SCREENSHOT: Add a failed run with the retry button and filtered step logs here. Suggested asset: docs/images/pipeline-retry.png. -->
 
-The demo host shows how to [register the Blazor assembly and interactive server rendering](src/Pipeline.Web/Program.cs). Its monitoring routes are `/pipeline` and `/pipeline/run/{RunId}`.
+The demo host shows how to [register pipeline pages and interactive server rendering](src/Pipeline.Web/Program.cs). Its monitoring routes are `/pipeline` and `/pipeline/run/{RunId}`. Use `PipelineRouter` in the host's Routes component to discover the library pages automatically while retaining the host layout.
+
+## Run the renderer and executor separately
+
+The executor host owns definitions, persistence, and processing:
+
+```csharp
+using Pipeline.AspNetCore;
+using Pipeline.Runtime;
+
+builder.Services.AddPipeline();
+// After builder.Build(), before app.Run():
+app.MapPipelineEndpoints();
+```
+
+The renderer host registers a remote monitor instead of an executor:
+
+```csharp
+using Pipeline.Blazor;
+using Pipeline.HttpClient;
+
+// Register host-wide HTTP defaults first.
+builder.Services.AddPipelineClient(new Uri("https://backend.example/"));
+
+app.MapRazorComponents<App>()
+    .AddPipelinePages()
+    .AddInteractiveServerRenderMode();
+```
+
+The library HTTP routes are under `/api/pipeline`; the UI routes remain under `/pipeline`. No general-purpose submission endpoint is included.
+
+[AspireApp1](src/AspireApp1/README.md) demonstrates separate frontend and backend processes. Its Kubernetes sample uses two replicas of each, shared SQL Server storage, Redis Data Protection keys, and Traefik frontend affinity. See [distributed hosting](docs/architecture/DISTRIBUTED-HOSTING.md) and [Kubernetes verification](docs/development/KUBERNETES.md).
+
+Multiple executor replicas require shared storage and compatible definition versions. Revisions and leases fence stored updates; external side effects can repeat. Blazor circuits remain local to a frontend pod.
 
 ## See it in action
 
-[Pipeline.Web](src/Pipeline.Web) is a Blazor demo with a simulated directory environment and an employee phone-line provisioning workflow. Watch licensing synchronization, phone assignment, policy updates, and verification play out as separate steps.
+The repository includes two separate sample applications. They demonstrate how to consume the Pipeline libraries and are not part of the library packages.
+
+| Sample application | Purpose |
+| --- | --- |
+| [Pipeline.Web](src/Pipeline.Web) | An all-in-one Blazor application that hosts rendering and execution together. It showcases how to use the libraries and build your own pipelines and tasks. |
+| [AspireApp1](src/AspireApp1/README.md) | A demonstration and test application for the libraries' distributed capabilities, with separate Blazor frontend and API backend hosts and a Kubernetes setup for testing multiple replicas and executor recovery. |
+
+### Pipeline.Web: build your own workflows
+
+Pipeline.Web includes a simulated directory environment and an employee phone-line provisioning workflow. Watch licensing synchronization, phone assignment, policy updates, and verification play out as separate steps.
 
 To run the demo:
 
@@ -262,16 +305,22 @@ To run the demo:
 
 The host automatically prepares Pipeline and Hangfire storage. The configured SQL Server identity needs permission to create and update their database objects.
 
-Open the application URL printed by the host and visit `/simulator`. Follow submitted workflows at `/pipeline`. In Development, the Hangfire dashboard is available at `/hangfire`.
+Open the application URL printed by the host and visit `/simulator`. Follow submitted workflows at `/pipeline`. The current sample maps the Hangfire dashboard at `/hangfire`; deployed hosts must configure access.
 
 <!-- SCREENSHOT: Add the directory simulator here, ideally alongside a run waiting for synchronization. Suggested asset: docs/images/pipeline-simulator.png. -->
+
+### AspireApp1: exercise distributed hosting
+
+Use AspireApp1 to run the renderer and executor in separate processes and test the libraries across host boundaries. Its Kubernetes configuration adds load-balanced frontend and backend replicas, shared SQL Server persistence, and Redis-backed Data Protection keys.
+
+See the [AspireApp1 sample guide](src/AspireApp1/README.md) for local setup and the [Kubernetes verification guide](docs/development/KUBERNETES.md) for replica and recovery checks.
 
 ## Build, explore, contribute
 
 ```powershell
 dotnet restore Pipeline.slnx
 dotnet build Pipeline.slnx
-dotnet test Pipeline.slnx
+# See tests/README.md for the library and Aspire test runners.
 ```
 
 Explore the [documentation overview](docs/index.md), or generate the API documentation with DocFX:

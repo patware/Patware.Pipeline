@@ -1,141 +1,95 @@
 # Patware.Pipeline.Blazor
 
-**Your workflows do the work. Give them a window.**
+Run history, job and step progress, formatted logs, and retry controls for a Blazor Web App with Interactive Server rendering. Requires .NET 10. Version `0.3.0` is a pre-1.0 release.
 
-Turn background execution into a story your team can follow. Patware.Pipeline.Blazor adds workflow monitoring to your Blazor application: recent runs, job and step progress, polling countdowns, formatted logs, and a way to resume failed work.
-
-Built for the [Pipeline ecosystem](https://github.com/patware/Patware.Pipeline), it connects directly to `IPipelineMonitor` and brings execution state into your application's UI.
-
-<!-- SCREENSHOT: Add a wide run-detail image showing job cards, a polling countdown, and colorful logs. Use an absolute public image URL for display on NuGet.org. -->
-
-## See the work. Find the hold-up. Move it forward.
-
-- **Follow every run:** see the latest 50 submissions, who started them, their status, and progress.
-- **Open the details:** inspect a run's definition, submission and execution timestamps, jobs, and steps.
-- **Watch the wait:** job cards show elapsed time and polling countdowns while external systems catch up.
-- **Get straight to the evidence:** filter logs by job or step instead of searching an entire run.
-- **Read logs with context:** severity labels and supported ANSI colors and styles make output easier to scan.
-- **Resume after a failure:** the **Re-run from failure** button asks the runtime to retry unfinished work while preserving successful steps and their outputs.
-
-Active run details refresh every second. The run overview and inactive run details refresh every 20 seconds. Updates use periodic runtime queries.
-
-## Install
-
-Requires **.NET 10** and a **Blazor Web App with Interactive Server rendering**. The included pages declare that render mode and access the runtime through server-side dependency injection.
-
-Version `0.1.0` is an initial development release; the public API may change. Once available on your NuGet feed:
-
-```shell
-dotnet add package Patware.Pipeline.Blazor --version 0.1.0
+```powershell
+dotnet add package Patware.Pipeline.Blazor --version 0.3.0
 ```
 
-Core and Runtime are package dependencies. Use the `Pipeline.Blazor.Pages` and `Pipeline.Blazor.Components` namespaces in your application.
+Blazor depends on Patware.Pipeline.Contracts, not Core or Runtime. Pages inject `IPipelineMonitor` and can display local or remote execution.
 
-## Add workflow monitoring to your app
+## Choose a monitoring source
 
-### 1. Register the runtime and Interactive Server components
+For a combined executor/renderer host, reference Patware.Pipeline.Runtime and call `builder.Services.AddPipeline()` once. Built-in steps and the log-formatting definition are automatically registered; register your own steps and definition versions separately.
 
-In `Program.cs`, configure the services and map the library's routable components alongside your app:
+For a separate renderer, reference Patware.Pipeline.HttpClient:
 
 ```csharp
-using Pipeline.Blazor.Pages;
-using Pipeline.Runtime;
-// Keep your app's existing using for its App component.
+using Pipeline.HttpClient;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure host-wide HTTP defaults first.
+builder.Services.AddPipelineClient(new Uri("https://backend.example/"));
+```
+
+In Aspire, call `builder.AddServiceDefaults()` first and use `https+http://apiservice`. Remote renderers do not call AddPipeline or host an executor.
+
+## Map the pages
+
+Keep the host's existing middleware and App component:
+
+```csharp
+using Pipeline.Blazor;
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddPipeline();
-
-// Register your workflow definitions, step services, and
-// IPipelineDefinitionRegistration implementations here.
-
-var app = builder.Build();
-
-// Keep your app's existing exception handling and other middleware.
-app.UseHttpsRedirection();
-app.UseAntiforgery();
-app.MapStaticAssets();
-
+// After builder.Build(), before app.Run():
 app.MapRazorComponents<App>()
-    .AddAdditionalAssemblies(typeof(LivePipelinePage).Assembly)
+    .AddPipelinePages()
     .AddInteractiveServerRenderMode();
-
-app.Run();
 ```
 
-If your app already calls `AddPipeline()`, use that registration. Call it once and configure any SQL Server or Hangfire providers in its callback. See the [Runtime README](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Runtime/README.md) for workflow registration and execution.
-
-### 2. Include the pages in your router
-
-Add the library assembly to the existing `Router` in `Routes.razor`, retaining your application's layout and route handling:
+In Routes.razor, use the library router while retaining your layout:
 
 ```razor
-<Router AppAssembly="typeof(Program).Assembly"
-        AdditionalAssemblies="new[] {
-            typeof(Pipeline.Blazor.Pages.LivePipelinePage).Assembly }">
+@using Pipeline.Blazor.Components
+
+<PipelineRouter AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="routeData"
                    DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
-</Router>
+</PipelineRouter>
 ```
 
-Both registrations matter: the endpoint mapping discovers the library pages on the server, and the router discovers them during interactive navigation. If you already list additional assemblies, append this assembly to that list.
+PipelineRouter combines the pipeline assembly with any AdditionalAssemblies you supply. It forwards Found, Navigating, OnNavigateAsync, and NotFoundPage. An existing framework Router can instead list the pipeline assembly manually. Endpoint discovery and component-router discovery are separate responsibilities.
 
-### 3. Load the styles
+## Styles and navigation
 
-The pages use **Bootstrap 5** classes and the library's isolated CSS. Include Bootstrap and your host's generated CSS isolation bundle in `App.razor`. A standard Bootstrap-based Blazor template already supplies these links:
+Load Bootstrap 5 and your application's generated CSS isolation bundle, such as `YourApp.styles.css`. Use the Bootstrap path supplied by your template. The host bundle imports the library's isolated styles; keep the template's Blazor script and head configuration.
 
-```razor
-<link rel="stylesheet" href="@Assets["lib/bootstrap/css/bootstrap.min.css"]" />
-<link rel="stylesheet" href="@Assets["YourApp.styles.css"]" />
-```
-
-Replace `YourApp` with your host assembly name and use the Bootstrap path supplied by your app. The host bundle brings in the library's isolated styles. Keep the template's Blazor script, `HeadOutlet`, and interactive rendering configuration.
-
-### 4. Open the dashboard
-
-Add a navigation link to `/pipeline`, submit a workflow through your runtime, and follow it from the overview into its detail page.
-
-| Route | What you'll see |
+| Route | Behaviour |
 | --- | --- |
-| `/pipeline` | The latest 50 runs, newest first. |
-| `/pipeline/run/{RunId}` | Run metadata, job and step cards, logs, and retry controls for failed runs. |
-| `/pipeline/run/{RunId}?job={JobId}` | Logs scoped to one job. |
-| `/pipeline/run/{RunId}?job={JobId}&step={StepId}` | Logs scoped to one step within that job. |
+| `/pipeline` | Latest 50 summaries and ordered job statuses; 20-second refresh. |
+| `/pipeline/run/{RunId:guid}` | Run, job, step, and log details; one-second active refresh and 20-second inactive refresh. |
+| `/pipeline/run/{RunId}?job={JobId}` | Logs scoped to a job. |
+| `/pipeline/run/{RunId}?job={JobId}&step={StepId}` | Logs scoped to a step in that job. |
 
-<!-- SCREENSHOT: Add the run overview here. Use an absolute public image URL when embedding it. -->
+Snapshot failures show a generic message and retain previously loaded data. Refresh continues, and detail pages discard stale results after route changes. Failed runs expose a retry action through the monitor.
 
-## A dashboard that uses your execution stack
+## Upgrade from runtime-coupled rendering
 
-The pages query and control the registered `IPipelineMonitor`. Use the built-in worker and in-memory storage for a small starting point, or companion providers for SQL Server persistence and Hangfire processing.
+Update old page links to the routes above. Custom components now use display enums and view types from Pipeline.Contracts instead of Runtime execution models. Core and Runtime are no longer transitive Blazor dependencies; applications using executor APIs must reference Runtime explicitly.
 
-With in-memory storage, history disappears when the process ends. Database-backed deployments retain history according to your storage management. Retry availability depends on the run state and the original workflow definition remaining registered.
-
-The host application controls access to monitoring and retry actions. Integrate these routes with your app's authorization policy; the included pages do not declare an authorization requirement.
-
-<!-- SCREENSHOT: Add a failed run with the retry action and step-filtered logs here. Use an absolute public image URL when embedding it. -->
-
-## Reuse the components
-
-You can also bring the building blocks into your own pages:
+## Reusable components
 
 | Component | Purpose |
 | --- | --- |
-| `PipelineJobCards` | Show job and step execution state, timings, polling countdowns, and links to scoped run logs. Requires the registered `TimeProvider` supplied by `AddPipeline`. |
-| `AnsiLogText` | Render log text with supported ANSI formatting as HTML-encoded spans. |
-| `LivePipelinePage` | Derive a custom monitoring page with serialized snapshot loading, periodic refresh, and disposal cleanup. |
+| PipelineRouter | Discover pipeline routes while retaining host presentation. |
+| PipelineJobCards | Display job/step state, timings, polling, and scoped-log links. |
+| PipelineJobStatuses | Display ordered job status icons from summary job views. |
+| AnsiLogText | Render supported ANSI styles using encoded text. |
+| LivePipelinePage | Serialized snapshot loading, refresh, error handling, and async cleanup. |
 
-The [demo host](https://github.com/patware/Patware.Pipeline/tree/main/src/Pipeline.Web) shows the complete integration, including a directory simulator and an employee provisioning workflow. Follow license synchronization, phone assignment, and verification as they happen.
+AddPipeline and AddPipelineClient provide the TimeProvider used by timing components. Pages do not declare authentication requirements; hosts own access policies.
+
+## Multiple frontend replicas
+
+Use session affinity for Interactive Server circuits and a shared Data Protection key repository/application name. A frontend failure can require a new circuit; shared keys and Redis caching do not move an existing circuit between pods.
+
+See [distributed hosting](https://github.com/patware/Patware.Pipeline/blob/main/docs/architecture/DISTRIBUTED-HOSTING.md), the [Aspire sample](https://github.com/patware/Patware.Pipeline/tree/main/src/AspireApp1), and [Kubernetes verification](https://github.com/patware/Patware.Pipeline/blob/main/docs/development/KUBERNETES.md).
 
 ## License
 
 [MIT](https://github.com/patware/Patware.Pipeline/blob/main/LICENSE).
-
----
-
-**Make background work visible. Make the next action obvious.**

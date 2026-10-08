@@ -6,6 +6,12 @@ Bring Hangfire processing to the [Pipeline ecosystem](https://github.com/patware
 
 Keep your C# workflow definitions and `IPipelineRuntime` calls. Select Hangfire in your registration callback and let the integration handle execution dispatch around them.
 
+## Distributed monitoring in 0.3.0
+
+Host the executor with `AddPipeline(options => options.UseSqlServer(connectionString).UseHangfire())` and map `MapPipelineEndpoints` from Patware.Pipeline.AspNetCore. A separate Blazor renderer uses Patware.Pipeline.HttpClient. Monitoring retry delegates to the selected Hangfire runtime, preserving dispatch of reopened runs.
+
+Executor replicas must share SQL Server storage and compatible definition versions. In-memory storage is process-local. Leases and revisions protect persisted state; external side effects can repeat and lifecycle events are not a durable cross-process bus. See the [distributed-hosting guide](https://github.com/patware/Patware.Pipeline/blob/main/docs/architecture/DISTRIBUTED-HOSTING.md).
+
 ## Give your workflows their next gear
 
 - **Background dispatch:** coordination jobs select eligible work and dispatch individual step attempts.
@@ -17,12 +23,12 @@ Keep your C# workflow definitions and `IPipelineRuntime` calls. Select Hangfire 
 
 ## Install
 
-Requires **.NET 10** and a running .NET host. Version `0.1.0` is an initial development release; the public API may change.
+Requires **.NET 10** and a running .NET host. Version `0.3.0` is a pre-1.0 release; the public API may change.
 
 Once available on your NuGet feed:
 
 ```shell
-dotnet add package Patware.Pipeline.Hangfire --version 0.1.0
+dotnet add package Patware.Pipeline.Hangfire --version 0.3.0
 ```
 
 Runtime, Core, and the Hangfire dependencies are brought in transitively. Use `Pipeline.Hangfire` for the integration and `Pipeline.Runtime` for the runtime API.

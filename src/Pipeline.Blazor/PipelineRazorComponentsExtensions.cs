@@ -19,7 +19,9 @@ public static class PipelineRazorComponentsExtensions
     /// The same builder so additional component configuration can be chained.
     /// </returns>
     /// <remarks>
-    /// The host's interactive Router must also discover the pipeline assembly.
+    /// Configures endpoint discovery for pipeline pages.
+    /// Use PipelineRouter for automatic component-router discovery,
+    /// or include the pipeline assembly in the host Router's AdditionalAssemblies.
     /// </remarks>
     public static RazorComponentsEndpointConventionBuilder AddPipelinePages(this RazorComponentsEndpointConventionBuilder builder)
     {

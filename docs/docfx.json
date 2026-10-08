@@ -6,11 +6,14 @@
         {
           "src": "../src",
           "files": [
-            "Pipeline.Blazor/Pipeline.Blazor.csproj",
-            "Pipeline.Core/Pipeline.Core.csproj",
-            "Pipeline.Hangfire/Pipeline.Hangfire.csproj",
-            "Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj",
-            "Pipeline.Runtime/Pipeline.Runtime.csproj"
+            "Pipeline.Blazor/bin/Release/net10.0/Pipeline.Blazor.dll",
+            "Pipeline.Contracts/bin/Release/net10.0/Pipeline.Contracts.dll",
+            "Pipeline.AspNetCore/bin/Release/net10.0/Pipeline.AspNetCore.dll",
+            "Pipeline.HttpClient/bin/Release/net10.0/Pipeline.HttpClient.dll",
+            "Pipeline.Core/bin/Release/net10.0/Pipeline.Core.dll",
+            "Pipeline.Hangfire/bin/Release/net10.0/Pipeline.Hangfire.dll",
+            "Pipeline.Persistence.EntityFrameworkCore/bin/Release/net10.0/Pipeline.Persistence.EntityFrameworkCore.dll",
+            "Pipeline.Runtime/bin/Release/net10.0/Pipeline.Runtime.dll"
           ]
         }
       ],

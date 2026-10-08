@@ -1,90 +1,69 @@
 # Tests
 
-Each library has an MSTest project under `tests/`, included in `Pipeline.slnx`.
-`Pipeline.Web` is intentionally excluded. All projects use Fluent Assertions and
-NSubstitute; common versions and test settings are in `Directory.Build.props`.
+Six library suites live under tests: Core, Runtime, Persistence.EntityFrameworkCore, Hangfire, Blazor, and Transport. AspireApp1.Tests under src/AspireApp1 verifies separate-process hosting. All appear in Pipeline.slnx; there is no Pipeline.Web test project.
 
-## Run
+## Run library tests
 
-Requires the .NET 10 SDK. From the repository root:
+The library projects use MSTest VSTest adapters. Run them through Visual Studio Test Explorer, or build and invoke the test assembly:
 
 ```powershell
-dotnet test Pipeline.slnx
+dotnet build tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj
+dotnet vstest tests/Pipeline.Runtime.Tests/bin/Debug/net10.0/Pipeline.Runtime.Tests.dll
 ```
 
-Run one suite:
+For every library suite from the repository root:
 
 ```powershell
-dotnet test tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj
+Get-ChildItem tests -Directory -Filter "Pipeline.*.Tests" | ForEach-Object {
+    $testProject = Join-Path $_.FullName ($_.Name + ".csproj")
+    dotnet build $testProject --configuration Release
+    if ($LASTEXITCODE -ne 0) { throw "Test build failed: $testProject" }
+    $testAssembly = Join-Path $_.FullName ("bin/Release/net10.0/" + $_.Name + ".dll")
+    dotnet vstest $testAssembly
+    if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testAssembly" }
+}
 ```
 
-Collect coverage for the five libraries (excluding test assemblies and generated
-build files):
+## Run Aspire tests
+
+global.json selects Microsoft.Testing.Platform, and AspireApp1.Tests enables its executable MSTest runner:
 
 ```powershell
-dotnet test Pipeline.slnx --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory TestResults
+dotnet test --project src/AspireApp1/AspireApp1.Tests/AspireApp1.Tests.csproj
 ```
 
-Coverlet writes one `coverage.cobertura.xml` per test project beneath
-`TestResults/`. Reports also include referenced libraries: merge reports with a
-Cobertura-compatible reporting tool for aggregate coverage; do not add their
-percentages together. Generated results are ignored by Git.
+Docker must be available for Aspire's Redis resource. These tests start the sample application, so they are separate from infrastructure-free library suites. The initial-rendering test verifies that the frontend displays a run executed by the backend.
 
-## Coverage and design
+A single solution-wide MTP invocation requires every test project to use MTP. The current library projects have not undergone that migration. See [runner documentation](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test).
 
-Verified baseline: **179 passing tests**, no skipped tests. The following figures
-are each library's coverage from its corresponding test project, not an aggregate
-of transitive coverage from other suites.
+## Coverage and conventions
 
-| Library | Tests | Line coverage | Branch coverage |
-| --- | ---: | ---: | ---: |
-| Core | 21 | 93.16% | 81.54% |
-| Runtime | 40 | 88.81% | 76.69% |
-| Persistence.EntityFrameworkCore | 24 | 93.59% | 84.61% |
-| Hangfire | 15 | 89.00% | 78.57% |
-| Blazor | 79 | 93.57% | 90.76% |
+The existing coverage.runsettings file and XPlat Code Coverage collector apply to VSTest. For a built library assembly:
 
-- **Core:** graph construction and ordering, typed output bindings, conditions,
-  transitive dependencies, cycles, invalid expressions, duplicate registrations,
-  immutable builder lifecycle, request serialization, and example pipelines.
-- **Runtime:** real coordinator, binder, invoker, and in-memory store working
-  together through DI, with substituted business services. Covers success,
-  exceptions, condition skips, blocked dependencies, polling and deadlines,
-  retries preserving completed work, stale dispatch, scoped logging, registration,
-  registry versioning, serialized operations, and worker shutdown.
-- **Persistence:** a shared contract suite runs against both the in-memory store
-  and EF with a fresh SQLite in-memory database per test. Covers graph and metadata
-  round trips, optimistic revisions, append-only logs, rollback after rejected
-  updates, output publication, lease fencing, scoped log validation, cancellation,
-  and cascading reset. NSubstitute supplies the context factory; database queries
-  and transactions use actual EF contexts. SQL Server registration is checked
-  without connecting to a server.
-- **Hangfire:** substituted job clients verify job type, arguments, scheduling,
-  recovery filtering, duplicate-wakeup avoidance, persisted compatibility
-  signatures, terminal-run no-ops, startup, and dispatch failure recovery.
-- **Blazor:** bUnit exercises pages, query-string log selection, retry actions,
-  polling countdowns, and lifecycle behavior. The framework HTML renderer tests
-  reusable components and HTML encoding. ANSI parsing covers standard, bright,
-  indexed and RGB colors, selective resets, malformed controls, and whitespace.
-  JS interop tests cover lazy module import, arguments, and disposal.
+```powershell
+dotnet vstest tests/Pipeline.Runtime.Tests/bin/Debug/net10.0/Pipeline.Runtime.Tests.dll --Settings:tests/coverage.runsettings --Collect:"XPlat Code Coverage" --ResultsDirectory:TestResults
+```
 
-`Shared/Samples.cs` contains deterministic sample graphs and a controllable clock.
-`Shared/StoreContractTests.cs` is linked into the two store test projects so the
-same public contract is checked for both implementations. Timing tests use fixed
-clock readings or task-completion signals rather than sleeps. The simple clock
-controls `GetUtcNow`; it does not simulate timer callbacks.
+Do not apply VSTest coverage switches to the Aspire MTP command. Configure MTP coverage separately if needed. Referenced assemblies may appear in multiple reports; merge them rather than adding percentages.
 
-## Scope limits
+Tests use Arrange, Act, and Assert sections and pass TestContext.CancellationToken through asynchronous operations. Shared/Samples.cs provides deterministic graphs and a controllable UTC clock; Shared/StoreContractTests.cs checks both in-memory and EF stores.
 
-These suites do not start SQL Server or a Hangfire server, or launch a browser.
-SQLite cannot establish SQL Server-specific query, migration, locking, or
-multi-process concurrency behavior. In particular, DateTimeOffset ordering is
-covered in the in-memory store, not asserted against SQLite. Actual SQL Server
-paging and active-run queries need a SQL Server integration environment.
-Automatic schema initialization, migration upgrades, and startup ordering with 
-real SQL Server and Hangfire require integration validation. 
-SQLite store tests do not validate the bundled SQL Server migrations.
+## What the suites establish
 
-Long-running lease renewal, background refresh timers, browser reconnection, and
-multi-worker races still warrant integration tests. The coverage figures describe
-executed code, not proof against every interleaving.
+- Core: graphs, dependencies, conditions, binding expressions, serialization, and examples.
+- Runtime: coordination, retry, claims, scoped context/logging, monitor projection, registrations, and shutdown.
+- Persistence: real EF/SQLite store contract tests, revisions, rollback, output publication, leases, and reset.
+- Hangfire: substituted clients checking dispatch, schedules, recovery, and compatibility.
+- Blazor: bUnit and HTML rendering, view contracts, error handling, navigation-related stale loads, retry, ANSI safety, and disposal.
+- Transport: in-process TestServer checks of library endpoints and the HTTP monitor, including inherited resilience policies.
+- Aspire: actual backend/frontend processes and initial server rendering.
+
+Earlier documented baseline: 179 tests across the original five suites. That count and its coverage percentages predate the transport/refactoring work and are not current release verification results.
+
+## Limits
+
+SQLite tests do not establish SQL Server-specific migrations, queries, or locking. Substituted Hangfire clients do not establish scheduler execution. Initial rendering does not establish browser circuit reconnection.
+
+The maintainer reported successful Kubernetes operation during API pod interruption. Kubernetes failure injection remains a separate validation scenario; record actual execution owners and persisted completion for a specific run. No checked-in test shown here automates pod deletion.
+
+See [distributed hosting](../docs/architecture/DISTRIBUTED-HOSTING.md) and [Kubernetes verification](../docs/development/KUBERNETES.md). External idempotency, long-running leases, competing workers, migration upgrades, and browser failover deserve environment-specific checks.

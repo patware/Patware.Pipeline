@@ -2,6 +2,8 @@
 
 Recovery discovers stored `Queued` and `Running` runs. It does not reopen failed workflows. The built-in runtime repeatedly scans active runs. Hangfire enqueues recovery at startup and registers `pipeline-recovery` every minute.
 
+Across replicas, recovery requires shared durable persistence and compatible definitions. The operation gate is process-local. Persisted leases last two minutes and renew every twenty seconds, so takeover can wait for expiry. See [distributed hosting](DISTRIBUTED-HOSTING.md) and [Kubernetes verification](../development/KUBERNETES.md).
+
 | Interruption | Behavior |
 | --- | --- |
 | Saved run, failed Hangfire enqueue | Submission logs the failure; recovery can dispatch later |

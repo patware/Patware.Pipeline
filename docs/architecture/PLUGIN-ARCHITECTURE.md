@@ -11,6 +11,7 @@ Pipeline uses compiled libraries and dependency injection. It has no dynamic plu
 | IStepOutputReader | Producer success, output availability, JSON |
 | IPipelineResetService | Provider-specific deletion semantics |
 | IPipelineRuntime | Submission, query, retry, processor entry point |
+| Pipeline.Contracts.IPipelineMonitor | Display queries and retry through local or HTTP adapters |
 | IPipelineRunEventHandler | Process-local lifecycle reactions |
 
 Provider selection uses [PipelineRegistrationOptions](https://github.com/patware/Patware.Pipeline/blob/main/src/Pipeline.Runtime/PipelineRegistrationOptions.cs). Choose within one `AddPipeline` callback before options freeze. The supplied integrations are `UseSqlServer` and `UseHangfire`; Hangfire only recognizes in-memory and SQL Server persistence kinds.

@@ -7,3 +7,5 @@ items:
   href: TESTING.md
 - name: UI integration
   href: UI-GUIDELINES.md
+- name: Kubernetes verification
+  href: KUBERNETES.md

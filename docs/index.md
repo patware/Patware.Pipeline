@@ -1,18 +1,23 @@
 # Pipeline
 
-These guides describe the implementation in `src/`, reviewed on 2026-10-06. They distinguish current behavior, implementation limits, and consuming-host responsibilities. Each guide links to the relevant source.
+These guides describe the 0.3.0 implementation in `src/`, reviewed on 2026-10-08. They distinguish current behavior, implementation limits, and consuming-host responsibilities. Publication is pending; VERSION identifies the prepared build.
 
 Browse the [Core API reference](xref:Pipeline.Core) or start with the library matching your task:
 
 | Library | Purpose |
 | --- | --- |
 | [Pipeline.Core](xref:Pipeline.Core) | Define jobs, dependencies, conditions, step invocations, and typed outputs. |
+| [Pipeline.Contracts](xref:Pipeline.Contracts) | Monitoring contracts and display views without executor dependencies. |
 | [Pipeline.Runtime](xref:Pipeline.Runtime) | Register services, submit and query runs, restore definitions, and coordinate execution. |
 | [Pipeline.Persistence.EntityFrameworkCore](xref:Pipeline.Persistence.EntityFrameworkCore) | Persist pipeline data in SQL Server using Entity Framework Core. |
 | [Pipeline.Hangfire](xref:Pipeline.Hangfire) | Dispatch execution through Hangfire and recover unfinished runs. |
 | [Pipeline.Blazor](xref:Pipeline.Blazor) | Display runs, job progress, and formatted logs with periodic refresh. |
+| [Pipeline.AspNetCore](xref:Pipeline.AspNetCore) | Map HTTP monitoring and retry endpoints in the backend. |
+| [Pipeline.HttpClient](xref:Pipeline.HttpClient) | Query a separate backend from the renderer. |
 
-To register the default runtime, use `AddPipeline`. Register step services and an `IPipelineDefinitionRegistration` for each definition version separately. Select SQL Server persistence with `UseSqlServer` and Hangfire processing with `UseHangfire` in the same configuration callback when needed. SQL Server persistence automatically applies bundled migrations during host startup before hosted workers begin processing; applications only configure the connection string.
+To register the default runtime, use `AddPipeline`. Built-in steps and the log-formatting definition are automatic. Register application steps and an `IPipelineDefinitionRegistration` for each application definition version separately. Select `UseSqlServer` and `UseHangfire` in the same callback when needed. SQL Server automatically applies bundled migrations before hosted workers start.
+
+Separate hosts use `MapPipelineEndpoints` on the executor and `AddPipelineClient` on the renderer. Blazor uses `AddPipelinePages` and `PipelineRouter`. Start with [distributed hosting](architecture/DISTRIBUTED-HOSTING.md) and [Kubernetes verification](development/KUBERNETES.md).
 
 ## Documentation guide
 
@@ -33,10 +38,13 @@ With the .NET 10 SDK and DocFX installed, run these commands from the repository
 
 ```powershell
 dotnet restore Pipeline.slnx
+dotnet build Pipeline.slnx --configuration Release --no-restore
 docfx docs/docfx.json
 ```
 
-DocFX writes generated API metadata to `docs/api` and the HTML site to `docs/_site`. To build and preview the site locally, run:
+DocFX reads the eight compiled Release assemblies and their adjacent XML documentation files. This includes generated Razor components without requiring DocFX's bundled compiler to run the SDK's Razor generator. Rebuild after source/XML documentation changes. DocFX writes metadata to `docs/api` and HTML to `docs/_site`; both are ignored generated output. See [DocFX assembly input](https://dotnet.github.io/docfx/docs/dotnet-api-docs.html).
+
+To preview the site locally after building the assemblies, run:
 
 ```powershell
 docfx docs/docfx.json --serve

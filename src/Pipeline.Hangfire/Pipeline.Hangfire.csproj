@@ -8,7 +8,7 @@
     <Authors>Patware</Authors>
     <Description>Power .NET workflows with Hangfire processing, scheduled polling, and recovery of unfinished pipeline runs using in-memory or SQL Server storage.</Description>
     <PackageTags>pipeline;dotnet;hangfire;background-jobs;workflow</PackageTags>
-    <PackageReleaseNotes>Initial release with Hangfire background processing for workflow coordination and step execution, scheduled polling, startup and recurring recovery scans for unfinished runs, and retry dispatch. Includes UseHangfire registration with in-memory or SQL Server job storage matched to the selected pipeline persistence.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.3.0: Aligned with the distributed-hosting package family. Remote monitoring delegates retry to the selected Hangfire runtime, preserving scheduler dispatch and recovery behaviour.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
     <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>

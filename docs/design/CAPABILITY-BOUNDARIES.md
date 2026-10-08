@@ -15,7 +15,9 @@ An enum, interface name, or demo placeholder does not establish a complete featu
 | Persistence | In-memory or SQL Server; SQLite used in tests |
 | Events | Best-effort process-local notifications |
 | Security/tenancy | Host-owned; no per-run principal or tenant policy |
-| Monitoring | Blazor polling and stored logs; no metrics exporter |
+| Monitoring | Contracts-based local/HTTP Blazor polling and stored logs; no dedicated metrics exporter |
+| Distributed hosts | Separate renderer/executor and SQL-backed replicas; no portable executable-plan transport |
+| Frontend failover | Affinity and shared keys; existing circuits do not migrate between pods |
 | Retention | All-runs reset; no age-based retention |
 | Demo | Simulated directory/Graph/Teams; other MyPipelines operations remain placeholders |
 

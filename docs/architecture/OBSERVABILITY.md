@@ -16,7 +16,7 @@ An unbounded in-memory channel feeds one dispatcher. Each notification gets a fr
 
 ## Monitoring
 
-Blazor polls snapshots rather than subscribing to events. The list refreshes every 20 seconds; active detail every second; terminal detail every 20 seconds. Hangfire's dashboard represents scheduling infrastructure, while Pipeline pages represent business progress.
+Blazor polls IPipelineMonitor through a local or HTTP adapter rather than subscribing to events. The list receives summaries with ordered jobs but no logs/step details. Backend list projection still loads snapshots per run. Detail reads include full logs. Refresh is every 20 seconds for the list/inactive detail and every second for active detail. Failed refreshes are logged, retain old data, and permit subsequent attempts. Hangfire's dashboard represents scheduling infrastructure, while Pipeline pages represent business progress.
 
 There is no dedicated metrics exporter or tracing integration. Host `ILogger` output captures worker discovery/dispatch errors and handler failures; inspect it alongside stored outcomes.
 

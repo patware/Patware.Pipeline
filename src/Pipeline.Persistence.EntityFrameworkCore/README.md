@@ -17,14 +17,20 @@ Part of the [Pipeline ecosystem](https://github.com/patware/Patware.Pipeline), i
 
 Persistence supplies the stored state used by runtime retry and processor recovery. The selected processor performs the execution; this package provides its database-backed stores.
 
+## Shared storage in 0.3.0
+
+Multiple executor replicas must use the same SQL Server database and register the same supported definition versions. Each process has its own operation gate; database revisions and renewable step leases coordinate persisted work across processes. In-memory persistence cannot provide a shared history.
+
+The Aspire Kubernetes sample uses this provider with two backend replicas. The maintainer reported successful operation during API pod interruption. Such validation does not imply exactly-once external effects or SQL Server high availability. See [distributed hosting](https://github.com/patware/Patware.Pipeline/blob/main/docs/architecture/DISTRIBUTED-HOSTING.md) and [Kubernetes verification](https://github.com/patware/Patware.Pipeline/blob/main/docs/development/KUBERNETES.md).
+
 ## Install
 
 Requires **.NET 10** and **SQL Server**. The package uses EF Core's SQL Server provider; it does not currently select other database providers.
 
-Version `0.1.0` is an initial development release; the public API may change. Once available on your NuGet feed:
+Version `0.3.0` is a pre-1.0 release; the public API may change. Once available on your NuGet feed:
 
 ```shell
-dotnet add package Patware.Pipeline.Persistence.EntityFrameworkCore --version 0.1.0
+dotnet add package Patware.Pipeline.Persistence.EntityFrameworkCore --version 0.3.0
 ```
 
 Runtime and Core arrive through transitive dependencies. The integration namespace is `Pipeline.Persistence.EntityFrameworkCore`.
