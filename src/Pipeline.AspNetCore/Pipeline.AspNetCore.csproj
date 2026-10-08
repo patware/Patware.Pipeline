@@ -8,7 +8,6 @@
     <PackageId>Patware.Pipeline.AspNetCore</PackageId>
     <Authors>Patware</Authors>
     <Description>ASP.NET Core endpoints for pipeline monitoring and retry.</Description>
-    <PackageReleaseNotes>0.3.0: Initial package providing MapPipelineEndpoints under /api/pipeline for summaries, execution queries, and retry. Includes fixed JSON options, no-store responses, paging validation, and generic error responses.</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
