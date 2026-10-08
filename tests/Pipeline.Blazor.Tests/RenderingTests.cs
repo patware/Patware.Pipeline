@@ -3,8 +3,9 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+
 using Pipeline.Blazor.Components;
-using Pipeline.Runtime;
+using Pipeline.Contracts;
 
 namespace Pipeline.Blazor.Tests;
 
@@ -46,21 +47,27 @@ public class RenderingTests
         var id = Guid.NewGuid();
         var html = await Render<PipelineJobCards>(new()
         {
-            [nameof(PipelineJobCards.Jobs)] = new[] { new JobExecutionState { RunId = id, JobId = "job & one", Status = status } },
-            [nameof(PipelineJobCards.Steps)] = new[] { new StepExecutionState { RunId = id, JobId = "job & one", StepId = "step/two", Status = StepExecutionStatus.Pending } }
+            [nameof(PipelineJobCards.Jobs)] = new[] { new PipelineJobView { RunId = id, JobId = "job & one", Status = status } },
+            [nameof(PipelineJobCards.Steps)] = new[] { new PipelineStepView { RunId = id, JobId = "job & one", StepId = "step/two", Status = StepExecutionStatus.Pending } }
         });
         html.Should().Contain(label).And.Contain(css).And.Contain("job=job%20%26%20one").And.Contain("step=step%2Ftwo");
     }
 
     [TestMethod]
-    [DataRow(5, "0m 05s")] [DataRow(3661, "1h 01m 01s")] [DataRow(90061, "1d 01h 01m 01s")] [DataRow(-1, "0m 00s")]
+    [DataRow(5, "0m 05s")]
+    [DataRow(3661, "1h 01m 01s")]
+    [DataRow(90061, "1d 01h 01m 01s")]
+    [DataRow(-1, "0m 00s")]
     public async Task Completed_job_renders_duration(int seconds, string expected)
     {
         var start = DateTimeOffset.UtcNow;
-        var html = await Render<PipelineJobCards>(new() { [nameof(PipelineJobCards.Jobs)] = new[]
+        var html = await Render<PipelineJobCards>(new()
         {
-            new JobExecutionState { RunId = Guid.NewGuid(), JobId = "job", Status = JobExecutionStatus.Succeeded, StartedAt = start, FinishedAt = start.AddSeconds(seconds) }
-        } });
+            [nameof(PipelineJobCards.Jobs)] = new[]
+        {
+            new PipelineJobView { RunId = Guid.NewGuid(), JobId = "job", Status = JobExecutionStatus.Succeeded, StartedAt = start, FinishedAt = start.AddSeconds(seconds) }
+        }
+        });
         html.Should().Contain(expected);
     }
 

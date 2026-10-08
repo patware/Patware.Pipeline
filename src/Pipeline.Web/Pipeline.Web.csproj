@@ -30,6 +30,7 @@
     <ProjectReference Include="..\Pipeline.Hangfire\Pipeline.Hangfire.csproj" />
     <ProjectReference Include="..\Pipeline.Persistence.EntityFrameworkCore\Pipeline.Persistence.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\Pipeline.Runtime\Pipeline.Runtime.csproj" />
+    <ProjectReference Include="..\Pipeline.AspNetCore\Pipeline.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>

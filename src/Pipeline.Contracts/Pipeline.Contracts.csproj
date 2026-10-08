@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Patware.Pipeline.Contracts</PackageId>
+    <Authors>Patware</Authors>
+    <Description>Transport-independent contracts for monitoring pipeline runs.</Description>
+    <PackageReleaseNotes>0.3.0: Initial package providing transport-independent IPipelineMonitor, display enums, run summaries, ordered job status views, and execution views without executor or persistence dependencies.</PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

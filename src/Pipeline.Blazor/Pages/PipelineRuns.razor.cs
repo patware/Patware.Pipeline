@@ -1,20 +1,16 @@
-using Pipeline.Runtime;
-
-using RuntimeRun = Pipeline.Runtime.PipelineRun;
+using Pipeline.Contracts;
 
 namespace Pipeline.Blazor.Pages;
 
 /// <summary>
-/// Displays the latest fifty pipeline runs and their job statuses, refreshing through the existing live-page lifecycle.
+/// Displays recent pipeline runs and their job statuses.
 /// </summary>
 public partial class PipelineRuns
 {
-    private IReadOnlyList<RuntimeRun> _runs = [];
-
-    private IReadOnlyDictionary<Guid, IReadOnlyList<JobExecutionState>> _jobsByRun = new Dictionary<Guid, IReadOnlyList<JobExecutionState>>();
+    private IReadOnlyList<PipelineRunSummaryView> _runs = [];
 
     /// <summary>
-    /// Loads recent runs and their ordered job execution states.
+    /// Loads the run overview through one monitoring operation.
     /// </summary>
     /// <param name="cancellationToken">
     /// The token used to cancel snapshot loading.
@@ -24,31 +20,13 @@ public partial class PipelineRuns
     /// </returns>
     protected override async Task LoadSnapshotAsync(CancellationToken cancellationToken)
     {
-        var recentRuns = await Runtime.GetRunsAsync(skip: 0, take: 50, cancellationToken: cancellationToken);
-
-        var nextRuns = new List<RuntimeRun>(recentRuns.Count);
-
-        var nextJobs = new Dictionary<Guid, IReadOnlyList<JobExecutionState>>(recentRuns.Count);
-
-        foreach (var recentRun in recentRuns)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var snapshot = await Runtime.GetExecutionAsync(recentRun.Id, cancellationToken);
-
-            if (snapshot is null)
-            {
-                continue;
-            }
-
-            nextRuns.Add(snapshot.Run);
-            nextJobs.Add(snapshot.Run.Id, snapshot.Jobs);
-        }
+        var summaries = await Monitor.GetRunsAsync(
+            skip: 0,
+            take: 50,
+            cancellationToken: cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        _runs = nextRuns;
-        _jobsByRun = nextJobs;
-
+        _runs = summaries;
     }
 }

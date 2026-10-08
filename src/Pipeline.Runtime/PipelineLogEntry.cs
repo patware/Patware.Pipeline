@@ -1,4 +1,4 @@
-﻿namespace Pipeline.Runtime;
+namespace Pipeline.Runtime;
 
 /// <summary>
 /// Specifies the severity of a persisted pipeline log entry.

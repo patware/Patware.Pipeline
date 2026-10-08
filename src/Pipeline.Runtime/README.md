@@ -17,12 +17,12 @@ Keep business actions in dependency-injected services. Describe dependencies, co
 
 ## Install
 
-Requires **.NET 10**. Package version `0.1.0` is an initial development release; the public API may change.
+Requires **.NET 10**. Package version `0.3.0` is a pre-1.0 release; the public API may change.
 
 Once available on your NuGet feed:
 
 ```shell
-dotnet add package Patware.Pipeline.Runtime --version 0.1.0
+dotnet add package Patware.Pipeline.Runtime --version 0.3.0
 ```
 
 The NuGet package name is `Patware.Pipeline.Runtime`; the runtime namespace is `Pipeline.Runtime`.
@@ -35,17 +35,11 @@ The included log-formatting example provides a small, complete introduction. In 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Pipeline.Core.Pipelines;
-using Pipeline.Core.Steps;
 using Pipeline.Runtime;
-using Pipeline.Runtime.Pipelines;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddPipeline();
-builder.Services.AddTransient<LogFormattingStep>();
-builder.Services.AddTransient<LogFormattingPipeline>();
-builder.Services.AddTransient<
-    IPipelineDefinitionRegistration, LogFormattingRegistration>();
 
 using var host = builder.Build();
 await host.StartAsync();
@@ -67,6 +61,27 @@ await host.WaitForShutdownAsync();
 ```
 
 Keep the host running while work executes. The example writes formatting samples to the pipeline's stored logs; query them through the runtime or view them with the companion Blazor library. Error-level sample messages demonstrate formatting and do not fail this example.
+
+`AddPipeline` automatically registers `NoOpStep`, `ExampleStep`, `LogFormattingStep`, `LogFormattingPipeline`, and its restoration registration. Remove explicit built-in registrations when upgrading; an ordinary registration appended afterward can introduce a duplicate definition ID/version.
+
+For automatic submission at host startup:
+
+```csharp
+builder.Services.AddPipeline(options =>
+{
+    options.RunLogFormattingDemoOnStartup = true;
+});
+```
+
+The option defaults to false and submits a new run on every enabled host startup. It is not a cluster-wide single-run seeder.
+
+## Monitor locally or remotely
+
+`AddPipeline` also registers a scoped `Pipeline.Contracts.IPipelineMonitor` adapter for display summaries, execution views, and retry through the selected runtime. The adapter keeps executor types out of renderers and retains scheduler-specific retry dispatch.
+
+An executor host can expose it using `app.MapPipelineEndpoints()` from Patware.Pipeline.AspNetCore. A separate renderer registers `AddPipelineClient` from Patware.Pipeline.HttpClient instead of `AddPipeline`. See the [distributed-hosting guide](https://github.com/patware/Patware.Pipeline/blob/main/docs/architecture/DISTRIBUTED-HOSTING.md).
+
+Multiple workers may use shared SQL Server storage. Every worker must register compatible definition versions. Local operation gates do not synchronize processes; persisted revisions and renewable leases coordinate ownership. External side effects may repeat after interruption, and lifecycle notifications remain process-local.
 
 ## Bring your own workflow
 
@@ -157,6 +172,9 @@ Call AddPipeline once, choosing providers in that callback. When SQL Server pers
 | Companion library | Purpose |
 | --- | --- |
 | Pipeline.Core | Define graphs, job dependencies, conditions, typed outputs, and polling. |
+| Pipeline.Contracts | Transport-independent display and monitoring contracts. |
+| Pipeline.AspNetCore | Expose library-owned monitoring and retry endpoints. |
+| Pipeline.HttpClient | Query a separate backend from a renderer host. |
 | Pipeline.Persistence.EntityFrameworkCore | Store pipeline data and execution state in SQL Server through EF Core. |
 | Pipeline.Hangfire | Dispatch and schedule work through Hangfire, with startup recovery. |
 | Pipeline.Blazor | Display run history, progress, scoped logs, and manual retry controls. |

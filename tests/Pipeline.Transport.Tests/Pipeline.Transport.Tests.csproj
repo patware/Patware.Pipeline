@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Pipeline.AspNetCore/Pipeline.AspNetCore.csproj" />
+    <ProjectReference Include="../../src/Pipeline.HttpClient/Pipeline.HttpClient.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Update="MSTest.TestAdapter" Version="4.4.1" />
+    <PackageReference Update="MSTest.TestFramework" Version="4.4.1" />
+    <PackageReference Update="FluentAssertions" Version="8.11.0" />
+    <PackageReference Update="NSubstitute" Version="6.2.0" />
+    <PackageReference Update="coverlet.collector" Version="10.1.0" />
+  </ItemGroup>
+
+</Project>

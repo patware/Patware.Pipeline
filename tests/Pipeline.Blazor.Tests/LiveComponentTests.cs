@@ -1,14 +1,18 @@
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using Pipeline.Blazor.Components;
 using Pipeline.Blazor.Pages;
-using Pipeline.Runtime;
+using Pipeline.Contracts;
 
 namespace Pipeline.Blazor.Tests;
 
 [TestClass]
 public class LiveComponentTests
 {
+    public Microsoft.VisualStudio.TestTools.UnitTesting.TestContext TestContext { get; set; } = null!;
+
     [TestMethod]
     [DataRow(StepExecutionStatus.Waiting, 1, 10, "Recheck in 1 second.")]
     [DataRow(StepExecutionStatus.Waiting, 5, 10, "Recheck in 5 seconds.")]
@@ -17,51 +21,179 @@ public class LiveComponentTests
     [DataRow(StepExecutionStatus.Waiting, 1, 1, "Polling timeout in 1 second.")]
     [DataRow(StepExecutionStatus.Waiting, 5, 0, "Polling deadline reached; awaiting status update.")]
     [DataRow(StepExecutionStatus.Running, 5, 10, "Verification in progress…")]
-    public void Job_cards_show_poll_countdown(StepExecutionStatus status, int dueSeconds, int deadlineSeconds, string expected)
+    public async Task Job_cards_show_poll_countdown(
+        StepExecutionStatus status,
+        int dueSeconds,
+        int deadlineSeconds,
+        string expected)
     {
+        //Arrange
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var clock = Substitute.For<TimeProvider>();
         clock.GetUtcNow().Returns(now);
-        using var context = new Bunit.TestContext();
+
+        await using var context = new BunitContext();
         context.Services.AddSingleton(clock);
+
         var id = Guid.NewGuid();
-        var job = new JobExecutionState { RunId = id, JobId = "job", Status = JobExecutionStatus.Running, StartedAt = now };
-        var step = new StepExecutionState { RunId = id, JobId = "job", StepId = "poll", Status = status, NextAttemptAt = now.AddSeconds(dueSeconds), PollDeadline = now.AddSeconds(deadlineSeconds) };
-        var cards = context.RenderComponent<PipelineJobCards>(p => p.Add(x => x.Jobs, new[] { job }).Add(x => x.Steps, new[] { step }));
+        var job = new PipelineJobView
+        {
+            RunId = id,
+            JobId = "job",
+            Status = JobExecutionStatus.Running,
+            StartedAt = now
+        };
+        var step = new PipelineStepView
+        {
+            RunId = id,
+            JobId = "job",
+            StepId = "poll",
+            Status = status,
+            NextAttemptAt = now.AddSeconds(dueSeconds),
+            PollDeadline = now.AddSeconds(deadlineSeconds)
+        };
+
+        // Act
+        var cards = context.Render<PipelineJobCards>(parameters => parameters
+            .Add(x => x.Jobs, [job])
+            .Add(x => x.Steps, [step]));
+
+        // Assert
         cards.Find(".job-card").TextContent.Should().Contain(expected);
-        cards.SetParametersAndRender(p => p.Add(x => x.Jobs, new[] { job with { Status = JobExecutionStatus.Failed } }));
+
+        cards.Render(parameters => parameters
+            .Add(x => x.Jobs, [job with { Status = JobExecutionStatus.Failed }]));
+
         cards.Find(".job-card").TextContent.Should().NotContain(expected);
     }
 
     public sealed class TestPage : LivePipelinePage
     {
         public Func<CancellationToken, Task> Load { get; set; } = _ => Task.CompletedTask;
+
         public Task Reload(CancellationToken token = default) => ReloadAsync(token);
+
+        /// <summary>
+        /// Gets whether snapshot loading completed successfully.
+        /// </summary>
+        public bool Loaded => HasLoaded;
+
+        /// <summary>
+        /// Gets the current user-facing loading error.
+        /// </summary>
+        public string? LoadingError => RefreshError;
+
         protected override Task LoadSnapshotAsync(CancellationToken cancellationToken) => Load(cancellationToken);
     }
 
     [TestMethod]
     public async Task Page_serializes_reload_and_disposal_waits_for_inflight_load()
     {
+        // Arrange
+        var token = TestContext.CancellationToken;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var calls = 0;
-        var page = new TestPage { Load = async _ => { Interlocked.Increment(ref calls); started.TrySetResult(); await release.Task; } };
-        var first = page.Reload();
-        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var second = page.Reload();
-        calls.Should().Be(1);
-        var disposal = page.DisposeAsync().AsTask();
-        disposal.IsCompleted.Should().BeFalse();
-        release.SetResult();
-        await Task.WhenAll(first, second, disposal).WaitAsync(TimeSpan.FromSeconds(5));
-        calls.Should().Be(2);
+
+        var page = new TestPage
+        {
+            Load = async cancellationToken =>
+            {
+                Interlocked.Increment(ref calls);
+                started.TrySetResult();
+                await release.Task.WaitAsync(cancellationToken);
+            }
+        };
+
+        Task? disposal = null;
+
+        try
+        {
+            // Act
+            var first = page.Reload(token);
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+            var second = page.Reload(token);
+
+            // Assert
+            calls.Should().Be(1);
+
+            disposal = page.DisposeAsync().AsTask();
+            disposal.IsCompleted.Should().BeFalse();
+
+            release.TrySetResult();
+
+            await Task.WhenAll(first, second, disposal)
+                .WaitAsync(TimeSpan.FromSeconds(5), token);
+
+            calls.Should().Be(2);
+        }
+        finally
+        {
+            // Unblock any load before waiting for cleanup, even if an assertion fails.
+            release.TrySetResult();
+
+            if (disposal is not null)
+            {
+                await disposal;
+            }
+            else
+            {
+                await page.DisposeAsync();
+            }
+        }
     }
 
     [TestMethod]
     public async Task Cancelled_reload_does_not_load_or_throw()
     {
-        await using var page = new TestPage { Load = _ => throw new AssertFailedException("Unexpected load") };
+        await using var page = new TestPage
+        {
+            Load = _ => throw new AssertFailedException("Unexpected load")
+        };
+
         await page.Reload(new CancellationToken(true));
+    }
+
+    [TestMethod]
+    public async Task Failed_reload_preserves_data_and_later_reload_recovers()
+    {
+        // Arrange
+        var attempts = 0;
+        var publishedValue = 0;
+
+        await using var page = new TestPage
+        {
+            Load = _ =>
+            {
+                attempts++;
+
+                if (attempts == 2)
+                {
+                    throw new HttpRequestException(
+                        "private connection detail");
+                }
+
+                publishedValue = attempts;
+                return Task.CompletedTask;
+            }
+        };
+
+        // Act
+        await page.Reload(TestContext.CancellationToken);
+        await page.Reload(TestContext.CancellationToken);
+
+        // Assert
+        page.Loaded.Should().BeTrue();
+        page.LoadingError.Should().NotBeNull();
+        publishedValue.Should().Be(1);
+
+        // Act
+        await page.Reload(TestContext.CancellationToken);
+
+        // Assert
+        page.Loaded.Should().BeTrue();
+        page.LoadingError.Should().BeNull();
+        publishedValue.Should().Be(3);
     }
 }

@@ -1,4 +1,4 @@
-@page "/pipeline-runs"
+@page "/pipeline"
 @rendermode InteractiveServer
 @inherits LivePipelinePage
 
@@ -13,11 +13,20 @@
     Refreshes every 20 seconds.
 </p>
 
-@if (_runs.Count == 0)
+@if (RefreshError is not null)
+{
+    <p class="text-warning" role="alert">@RefreshError</p>
+}
+
+@if (_runs.Count == 0 && !HasLoaded && RefreshError is null)
+{
+    <p>Loading pipeline runs…</p>
+}
+else if (_runs.Count == 0 && HasLoaded)
 {
     <p>No pipeline runs yet.</p>
 }
-else
+else if (_runs.Count > 0)
 {
     <div class="table-responsive">
         <table class="table table-hover align-middle">
@@ -37,7 +46,7 @@ else
                 {
                     <tr @key="run.Id">
                         <td>
-                            <a href="@($"pipeline-runs/{run.Id}")">
+                            <a href="@($"pipeline/run/{run.Id}")">
                                 @run.Title
                             </a>
                             <div class="small text-muted">@run.Id</div>
@@ -48,7 +57,7 @@ else
                         </td>
                         <td>@run.CreatedBy</td>
                         <td>@run.Status</td>
-                        <td><PipelineJobStatuses Jobs="@_jobsByRun[run.Id]"/></td>
+                        <td><PipelineJobStatuses Jobs="@run.Jobs"/></td>
                         <td>@run.StatusText</td>
                         
                     </tr>

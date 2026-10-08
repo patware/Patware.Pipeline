@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pipeline-test
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sql-data
+  namespace: pipeline-test
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql
+  namespace: pipeline-test
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sql
+  template:
+    metadata:
+      labels:
+        app: sql
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: sql
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          ports:
+            - containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_PID
+              value: Developer
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-db
+                  key: sa-password
+          resources:
+            requests:
+              memory: 2Gi
+              cpu: "500m"
+            limits:
+              memory: 3Gi
+          readinessProbe:
+            tcpSocket:
+              port: 1433
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/opt/mssql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sql-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql
+  namespace: pipeline-test
+spec:
+  selector:
+    app: sql
+  ports:
+    - port: 1433
+      targetPort: 1433
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: pipeline-test
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  namespace: pipeline-test
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:8-alpine
+          args:
+            - --appendonly
+            - "yes"
+            - --maxmemory-policy
+            - noeviction
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            exec:
+              command: [redis-cli, ping]
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: redis-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache
+  namespace: pipeline-test
+spec:
+  selector:
+    app: cache
+  ports:
+    - port: 6379
+      targetPort: 6379

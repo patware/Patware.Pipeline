@@ -9,7 +9,7 @@
     <Authors>Patware</Authors>
     <Description>Bring .NET workflows into view with Blazor pages for pipeline run history, job and step progress, formatted logs, and retry controls.</Description>
     <PackageTags>pipeline;dotnet;blazor</PackageTags>
-    <PackageReleaseNotes>Initial release with Blazor Interactive Server pages and components for displaying workflow run history, job and step progress, polling countdowns, periodically refreshed execution state, scoped log filtering, ANSI-formatted logs, and retry-from-failure controls. Pipeline Runs includes a Jobs column with individual job status icons, direct links to job logs, descriptive tooltips, screen-reader labels, and running animations that respect reduced-motion preferences.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.3.0: Monitoring now depends on Pipeline.Contracts and supports local or HTTP monitoring. Added PipelineRouter and AddPipelinePages, /pipeline routes, summary-based overview loading, and recoverable refresh error handling. Runtime display types and old page links require migration.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
     <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>
@@ -23,16 +23,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Pipeline.Core\Pipeline.Core.csproj" />
-    <ProjectReference Include="..\Pipeline.Runtime\Pipeline.Runtime.csproj" />
+    <ProjectReference Include="..\Pipeline.Contracts\Pipeline.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

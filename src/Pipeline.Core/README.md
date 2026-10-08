@@ -18,15 +18,17 @@ Your actions stay in ordinary service classes. Your workflow describes how they 
 
 ## Install
 
-Requires **.NET 10**. Version `0.1.0` is an initial development release; the public API may change.
+Requires **.NET 10**. Version `0.3.0` is a pre-1.0 release; the public API may change.
 
 Once available on your NuGet feed:
 
 ```shell
-dotnet add package Patware.Pipeline.Core --version 0.1.0
+dotnet add package Patware.Pipeline.Core --version 0.3.0
 ```
 
 Use the `Pipeline.Core` namespace. This library builds plans and requests; execution, storage, and background processing are supplied by companion libraries. Installing the runtime package, `Patware.Pipeline.Runtime`, also brings Core in as a dependency.
+
+In 0.3.0, transport monitoring lives in the separate Patware.Pipeline.Contracts package. Plans and expressions stay in the executor application; the HTTP monitoring protocol carries display views rather than executable graphs. The Runtime automatically registers the included NoOpStep, ExampleStep, and log-formatting demonstration services.
 
 ## Build your first workflow
 

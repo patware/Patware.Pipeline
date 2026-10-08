@@ -1,0 +1,11 @@
+items:
+- name: Getting started
+  href: GETTING-STARTED.md
+- name: Coding standards
+  href: CODING-STANDARDS.md
+- name: Testing
+  href: TESTING.md
+- name: UI integration
+  href: UI-GUIDELINES.md
+- name: Kubernetes verification
+  href: KUBERNETES.md

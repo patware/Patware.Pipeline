@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Patware.Pipeline.HttpClient</PackageId>
+    <Authors>Patware</Authors>
+    <Description>HTTP client integration for remote pipeline monitoring.</Description>
+    <PackageReleaseNotes>0.3.0: Initial package providing AddPipelineClient and HTTP-backed IPipelineMonitor. Preserves base-path prefixes, handles missing runs and retry conflicts, and replaces inherited resilience policies while disabling unsafe-method retries.</PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience"
+                      Version="10.10.0" />
+  </ItemGroup>
+  
+<ItemGroup>
+    <ProjectReference Include="..\Pipeline.Contracts\Pipeline.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>  
+ 

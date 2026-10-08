@@ -5,7 +5,25 @@
     <File Path="docs/index.md" />
     <File Path="docs/toc.yml" />
   </Folder>
+  <Folder Name="/Library/">
+    <Project Path="src/Pipeline.AspNetCore/Pipeline.AspNetCore.csproj" Id="11f35f1f-2c42-4fff-b87a-f7ead923167f" />
+    <Project Path="src/Pipeline.Blazor/Pipeline.Blazor.csproj" Id="febb32a3-ea44-49ea-b896-28ccfa23a807" />
+    <Project Path="src/Pipeline.Contracts/Pipeline.Contracts.csproj" Id="1a4b76f7-38f8-4dab-bb5e-c4d50c81b351" />
+    <Project Path="src/Pipeline.Core/Pipeline.Core.csproj" Id="adcad8b8-e3a8-47aa-8ca4-72c767089a81" />
+    <Project Path="src/Pipeline.Hangfire/Pipeline.Hangfire.csproj" Id="c918a489-d812-476c-af12-9aab2b374509" />
+    <Project Path="src/Pipeline.HttpClient/Pipeline.HttpClient.csproj" Id="eb8520e9-f963-47bc-8ee5-adeb5224e3ce" />
+    <Project Path="src/Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj" Id="b39031c0-5975-4ccf-b141-d1f4d6857c80" />
+    <Project Path="src/Pipeline.Runtime/Pipeline.Runtime.csproj" Id="e773e4c0-2857-4c7f-8517-91979e77b53e" />
+  </Folder>
+  <Folder Name="/SampleApps/">
+    <Project Path="src/AspireApp1/AspireApp1.ApiService/AspireApp1.ApiService.csproj" />
+    <Project Path="src/AspireApp1/AspireApp1.AppHost/AspireApp1.AppHost.csproj" Id="13bcc11b-dbec-428e-8d0e-f90d8eeb5fd2" />
+    <Project Path="src/AspireApp1/AspireApp1.ServiceDefaults/AspireApp1.ServiceDefaults.csproj" />
+    <Project Path="src/AspireApp1/AspireApp1.Web/AspireApp1.Web.csproj" />
+    <Project Path="src/Pipeline.Web/Pipeline.Web.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
@@ -28,16 +46,12 @@
     <File Path="tests/coverage.runsettings" />
     <File Path="tests/Directory.Build.props" />
     <File Path="tests/README.md" />
+    <Project Path="src/AspireApp1/AspireApp1.Tests/AspireApp1.Tests.csproj" />
     <Project Path="tests/Pipeline.Blazor.Tests/Pipeline.Blazor.Tests.csproj" />
     <Project Path="tests/Pipeline.Core.Tests/Pipeline.Core.Tests.csproj" />
     <Project Path="tests/Pipeline.Hangfire.Tests/Pipeline.Hangfire.Tests.csproj" />
     <Project Path="tests/Pipeline.Persistence.EntityFrameworkCore.Tests/Pipeline.Persistence.EntityFrameworkCore.Tests.csproj" />
     <Project Path="tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj" />
+    <Project Path="tests/Pipeline.Transport.Tests/Pipeline.Transport.Tests.csproj" Id="783e7f4f-2571-4200-ac5f-6a4c6ba81c4e" />
   </Folder>
-  <Project Path="src/Pipeline.Blazor/Pipeline.Blazor.csproj" Id="febb32a3-ea44-49ea-b896-28ccfa23a807" />
-  <Project Path="src/Pipeline.Core/Pipeline.Core.csproj" Id="adcad8b8-e3a8-47aa-8ca4-72c767089a81" />
-  <Project Path="src/Pipeline.Hangfire/Pipeline.Hangfire.csproj" Id="c918a489-d812-476c-af12-9aab2b374509" />
-  <Project Path="src/Pipeline.Persistence.EntityFrameworkCore/Pipeline.Persistence.EntityFrameworkCore.csproj" Id="b39031c0-5975-4ccf-b141-d1f4d6857c80" />
-  <Project Path="src/Pipeline.Runtime/Pipeline.Runtime.csproj" Id="e773e4c0-2857-4c7f-8517-91979e77b53e" />
-  <Project Path="src/Pipeline.Web/Pipeline.Web.csproj" />
 </Solution>

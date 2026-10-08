@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apiservice
+  namespace: pipeline-test
+spec:
+  # Initialize the database first, then scale this to two.
+  replicas: 2
+  selector:
+    matchLabels:
+      app: apiservice
+  template:
+    metadata:
+      labels:
+        app: apiservice
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: api
+          image: patware/pipeline-api:k8s-test-v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Kubernetes
+            - name: Hosting__ExposeHealthEndpoints
+              value: "true"
+            - name: Pipeline__RequireSharedStorage
+              value: "true"
+            - name: Pipeline__RunLogFormattingDemoOnStartup
+              value: "false"
+            - name: Pipeline__EnableDemoEndpoints
+              value: "true"
+            - name: ConnectionStrings__Pipeline
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-db
+                  key: connection-string
+          startupProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiservice
+  namespace: pipeline-test
+spec:
+  sessionAffinity: None
+  selector:
+    app: apiservice
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webfrontend
+  namespace: pipeline-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webfrontend
+  template:
+    metadata:
+      labels:
+        app: webfrontend
+    spec:
+      containers:
+        - name: web
+          image: patware/pipeline-web:k8s-test
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Kubernetes
+            - name: Hosting__ExposeHealthEndpoints
+              value: "true"
+            - name: Hosting__UseHttpsRedirection
+              value: "false"
+            - name: ConnectionStrings__cache
+              value: cache:6379
+            - name: services__apiservice__http__0
+              value: http://apiservice
+          startupProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webfrontend
+  namespace: pipeline-test
+spec:
+  selector:
+    app: webfrontend
+  ports:
+    - port: 80
+      targetPort: 8080

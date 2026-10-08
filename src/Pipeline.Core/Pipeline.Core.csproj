@@ -8,7 +8,7 @@
     <Authors>Patware</Authors>
     <Description>Build composable, typed workflow graphs for .NET with dependencies, conditions, and polling.</Description>
     <PackageTags>pipeline;dotnet</PackageTags>
-    <PackageReleaseNotes>Added IPipelineStepContext and PipelineStepContextSnapshot to expose pipeline run identity, definition and version, submitter, title, run creation timestamp, and job and step identifiers to step services.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.3.0: Aligned with the distributed-hosting package family. Graph construction, versioned requests, and step context/logging contracts remain separate from transport monitoring contracts.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
     <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>
