@@ -4,25 +4,24 @@ Six library suites live under tests: Core, Runtime, Persistence.EntityFrameworkC
 
 ## Run library tests
 
-The library projects use MSTest VSTest adapters. Run them through Visual Studio Test Explorer, or build and invoke the test assembly:
+The library test projects enable the MSTest executable runner.
+global.json selects Microsoft.Testing.Platform for dotnet test.
+
+Run one suite:
 
 ```powershell
-dotnet build tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj
-dotnet vstest tests/Pipeline.Runtime.Tests/bin/Debug/net10.0/Pipeline.Runtime.Tests.dll
+dotnet test --project tests/Pipeline.Runtime.Tests/Pipeline.Runtime.Tests.csproj --configuration Release -- --minimum-expected-tests 1
 ```
 
-For every library suite from the repository root:
+Build the eight libraries, run every library suite, and pack:
 
 ```powershell
-Get-ChildItem tests -Directory -Filter "Pipeline.*.Tests" | ForEach-Object {
-    $testProject = Join-Path $_.FullName ($_.Name + ".csproj")
-    dotnet build $testProject --configuration Release
-    if ($LASTEXITCODE -ne 0) { throw "Test build failed: $testProject" }
-    $testAssembly = Join-Path $_.FullName ("bin/Release/net10.0/" + $_.Name + ".dll")
-    dotnet vstest $testAssembly
-    if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testAssembly" }
-}
+$packages = ./Build.ps1
 ```
+
+Build.ps1 discovers test projects independently of library names, so it
+includes Pipeline.Transport.Tests. Any failed suite stops packaging.
+Each suite must discover at least one test.
 
 ## Run Aspire tests
 
@@ -34,7 +33,7 @@ dotnet test --project src/AspireApp1/AspireApp1.Tests/AspireApp1.Tests.csproj
 
 Docker must be available for Aspire's Redis resource. These tests start the sample application, so they are separate from infrastructure-free library suites. The initial-rendering test verifies that the frontend displays a run executed by the backend.
 
-A single solution-wide MTP invocation requires every test project to use MTP. The current library projects have not undergone that migration. See [runner documentation](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test).
+A single solution-wide MTP invocation requires every test project to use MTP.  See [runner documentation](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test).
 
 ## Coverage and conventions
 

@@ -8,7 +8,6 @@
     <Authors>Patware</Authors>
     <Description>The runtime for the composable pipeline library for .NET.</Description>
     <PackageTags>pipeline;dotnet</PackageTags>
-    <PackageReleaseNotes>0.3.0: Added a local IPipelineMonitor adapter, automatic built-in step and definition registration, and optional RunLogFormattingDemoOnStartup. Preserves persisted revision and lease checks for shared-storage execution.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
     <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>

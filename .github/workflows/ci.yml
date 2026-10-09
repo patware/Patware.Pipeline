@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  packages:
+    name: Libraries and packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build, test, and pack
+        id: build
+        run: |
+          $packages = ./Build.ps1
+          "packages=$packages" >> $env:GITHUB_OUTPUT
+
+      - name: Validate packages and run consumer smoke test
+        env:
+          PACKAGE_DIRECTORY: ${{ steps.build.outputs.packages }}
+        run: |
+          ./eng/Test-Packages.ps1 `
+            -PackageDirectory $env:PACKAGE_DIRECTORY
+
+      - name: Retain validated packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: validated-packages-${{ github.sha }}
+          path: ${{ steps.build.outputs.packages }}
+          if-no-files-found: error
+          retention-days: 14
+
+  aspire:
+    name: Aspire integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Configure HTTPS certificate trust
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          certificate_path="$RUNNER_TEMP/pipeline-dev-cert.crt"
+
+          # Create/select the runner user's development certificate,
+          # exporting only its public certificate.
+          dotnet dev-certs https \
+            --export-path "$certificate_path" \
+            --format PEM
+
+          # Install it in Ubuntu's system trust store.
+          sudo install -m 0644 "$certificate_path" \
+            /usr/local/share/ca-certificates/pipeline-dev-cert.crt
+
+          sudo update-ca-certificates
+
+          # Verify trust and the hostname used by Aspire's health checks.
+          openssl verify \
+            -CAfile /etc/ssl/certs/ca-certificates.crt \
+            -purpose sslserver \
+            -verify_hostname localhost \
+            "$certificate_path"
+
+          # Expose system trust to subsequent steps and child processes.
+          echo "SSL_CERT_DIR=/etc/ssl/certs" >> "$GITHUB_ENV"
+
+      - name: Check Docker
+        run: |
+          docker info
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Docker is unavailable.'
+          }
+
+      - name: Run Aspire tests
+        run: |
+          dotnet test `
+            --project src/AspireApp1/AspireApp1.Tests/AspireApp1.Tests.csproj `
+            --configuration Release `
+            -p:ContinuousIntegrationBuild=true `
+            -- --minimum-expected-tests 1
+
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Aspire integration tests failed.'
+          }

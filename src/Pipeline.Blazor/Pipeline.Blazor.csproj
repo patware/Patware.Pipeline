@@ -9,7 +9,6 @@
     <Authors>Patware</Authors>
     <Description>Bring .NET workflows into view with Blazor pages for pipeline run history, job and step progress, formatted logs, and retry controls.</Description>
     <PackageTags>pipeline;dotnet;blazor</PackageTags>
-    <PackageReleaseNotes>0.3.0: Monitoring now depends on Pipeline.Contracts and supports local or HTTP monitoring. Added PipelineRouter and AddPipelinePages, /pipeline routes, summary-based overview loading, and recoverable refresh error handling. Runtime display types and old page links require migration.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/patware/Patware.Pipeline</PackageProjectUrl>
     <RepositoryUrl>https://github.com/patware/Patware.Pipeline</RepositoryUrl>
     <Copyright>Copyright (c) 2026 Patrice Calvé</Copyright>

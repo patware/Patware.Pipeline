@@ -5,9 +5,27 @@ published releases are identified by package and release date below.
 
 ## Unreleased
 
-No changes recorded after the 0.3.0 release preparation.
+## 0.3.1
 
-## 0.3.0 - Pending publication
+### Changed
+
+- Centralized NuGet package release-note links so all eight libraries
+  point to the GitHub release matching their package version.
+
+### Added
+
+- Release builds run all library test suites before creating packages,
+  including transport tests.
+- Added package-content validation and an isolated consumer smoke test.
+- Added release preparation from a clean commit, with Aspire validation,
+  extracted release notes, and SHA-256 artifact checksums.
+
+### Fixed
+
+- Removed redundant built-in pipeline registrations from Pipeline.Web,
+  fixing duplicate LogFormatting definition errors.
+
+## 0.3.0 - 2026.10.08
 
 ### Added
 
