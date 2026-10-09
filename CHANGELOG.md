@@ -5,7 +5,7 @@ published releases are identified by package and release date below.
 
 ## Unreleased
 
-## 0.3.1 - Unreleased
+## 0.3.1
 
 ### Changed
 
@@ -20,7 +20,7 @@ published releases are identified by package and release date below.
 - Added release preparation from a clean commit, with Aspire validation,
   extracted release notes, and SHA-256 artifact checksums.
 
-# Fixed
+### Fixed
 
 - Removed redundant built-in pipeline registrations from Pipeline.Web,
   fixing duplicate LogFormatting definition errors.
