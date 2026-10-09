@@ -1,59 +1,124 @@
-Set-Location $PSScriptRoot
-
-$version = get-content "VERSION" | select-object -first 1
-
-$artifactsPath = Join-Path ".\artifacts\packages" -ChildPath "v$version"
-
-if (Test-Path $artifactsPath)
-{
-  Write-Error "Artifacts path [$artifactsPath] already exists. Please remove it before running the build script."
-  exit 1
-}
-
-New-Item $artifactsPath -ItemType Directory -Force
-
-$itemsToBuild = @(
-  "Pipeline.Core"
-  "Pipeline.Contracts"
-  "Pipeline.Runtime"
-  "Pipeline.Persistence.EntityFrameworkCore"
-  "Pipeline.Hangfire"
-  "Pipeline.Blazor"
-  "Pipeline.AspNetCore"
-  "Pipeline.HttpClient"
+#requires -Version 7.0
+[CmdletBinding()]
+param(
+    [string] $OutputDirectory,
+    [switch] $IncludeAspire
 )
 
-foreach($item in $itemsToBuild)
-{
-  Write-Host "Building [$item]..."
-  & dotnet build "src/$item/$item.csproj" --configuration Release -p:ContinuousIntegrationBuild=true
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-  if ($LASTEXITCODE -ne 0) {
-      Write-Error "Build failed for [$item]: Error code [$LASTEXITCODE]. Aborting build."
-      exit $LASTEXITCODE
-  }
-
-  if (Test-Path "tests/$($item).Tests/$($item).Tests.csproj")
-  {
-    Write-Host "Running unit tests for [$item]..."
-    & dotnet test "tests/$($item).Tests/$($item).Tests.csproj" --configuration Release -p:ContinuousIntegrationBuild=true
+function Invoke-DotNet {
+    & dotnet @args | Out-Host
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Unit tests failed for [$item]: Error code [$LASTEXITCODE]. Aborting build."
-        exit $LASTEXITCODE
+        throw "dotnet failed with exit code $LASTEXITCODE."
     }
-  }
-  else
-  {
-      Write-Host "No unit tests found for [$item]. Skipping test execution."
-  }
-
-  & dotnet pack "src/$($item)/$($item).csproj" --configuration Release --output $artifactsPath -p:ContinuousIntegrationBuild=true
-
-  if ($LASTEXITCODE -ne 0) {
-      Write-Error "Packaging failed for [$item]: Error code [$LASTEXITCODE]. Aborting build."
-      exit $LASTEXITCODE
-  }
-
 }
 
+$root = $PSScriptRoot
+$version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
+
+if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+    throw "Invalid release version: '$version'."
+}
+
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    $attempt = [Guid]::NewGuid().ToString('N')
+    $OutputDirectory = "artifacts/packages/v$version/$attempt"
+}
+
+$OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory, $root)
+
+if (Test-Path -LiteralPath $OutputDirectory) {
+    throw "Output directory already exists: $OutputDirectory"
+}
+
+$libraries = @(
+    'Pipeline.Core'
+    'Pipeline.Contracts'
+    'Pipeline.Runtime'
+    'Pipeline.Persistence.EntityFrameworkCore'
+    'Pipeline.Hangfire'
+    'Pipeline.Blazor'
+    'Pipeline.AspNetCore'
+    'Pipeline.HttpClient'
+)
+
+$testProjects = @(
+    Get-ChildItem (Join-Path $root 'tests') -Recurse -Filter '*.csproj' |
+        Sort-Object FullName
+)
+
+if ($testProjects.Count -eq 0) {
+    throw 'No library test projects were found.'
+}
+
+Push-Location $root
+
+try {
+    $commit = & git rev-parse HEAD
+
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Cannot determine the source commit.'
+    }
+
+    $properties = @(
+        '-p:ContinuousIntegrationBuild=true'
+        "-p:Version=$version"
+        "-p:RepositoryCommit=$commit"
+    )
+
+    New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
+
+    foreach ($library in $libraries) {
+        Write-Host "`nBuilding $library"
+
+        $project = Join-Path $root "src/$library/$library.csproj"
+
+        Invoke-DotNet build $project `
+            --configuration Release `
+            --no-incremental `
+            @properties
+    }
+
+    foreach ($project in $testProjects) {
+        Write-Host "`nTesting $($project.BaseName)"
+
+        Invoke-DotNet test `
+            --project $project.FullName `
+            --configuration Release `
+            @properties `
+            -- --minimum-expected-tests 1
+    }
+
+    if ($IncludeAspire) {
+        Write-Host "`nTesting Aspire hosting; Docker must be running."
+
+        Invoke-DotNet test `
+            --project 'src/AspireApp1/AspireApp1.Tests/AspireApp1.Tests.csproj' `
+            --configuration Release `
+            @properties `
+            -- --minimum-expected-tests 1
+    }
+
+    foreach ($library in $libraries) {
+        Write-Host "`nPacking $library"
+
+        $project = Join-Path $root "src/$library/$library.csproj"
+
+        Invoke-DotNet pack $project `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --output $OutputDirectory `
+            @properties
+    }
+
+    # The success stream contains only this path.
+    # Callers can capture it while build/test output remains visible.
+    Write-Output $OutputDirectory
+}
+finally {
+    Pop-Location
+}

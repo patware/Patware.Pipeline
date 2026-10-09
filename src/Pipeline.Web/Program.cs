@@ -52,12 +52,6 @@ builder.Services.AddPipeline(options =>
         .UseHangfire();
 });
 
-// Formatting sample used to verify log rendering.
-builder.Services.AddTransient<Pipeline.Core.Steps.LogFormattingStep>();
-builder.Services.AddTransient<Pipeline.Core.Pipelines.LogFormattingPipeline>();
-
-builder.Services.AddTransient<IPipelineDefinitionRegistration, Pipeline.Runtime.Pipelines.LogFormattingRegistration>();
-
 // ============ My stuff ==========================
 
 builder.Services.AddSingleton<DirectorySimulator>();

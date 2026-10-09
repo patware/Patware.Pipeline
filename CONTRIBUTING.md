@@ -11,12 +11,13 @@ The SDK policy accepts the latest installed .NET 10 feature band starting at
 [.vsconfig](.vsconfig) for the ASP.NET and web development workload; use an IDE
 that supports the selected SDK and `.slnx` solution format.
 
+The PowerShell scripts require PowerShell 7 or later
+
 From the repository root:
 
 ```powershell
-dotnet restore Pipeline.slnx
-dotnet build Pipeline.slnx --configuration Release --no-restore
-dotnet test Pipeline.slnx --configuration Release --no-build
+$packages = ./Build.ps1
+./eng/Test-Packages.ps1 -PackageDirectory $packages
 ```
 
 The unit tests do not require SQL Server. See [tests/README.md](tests/README.md)
@@ -40,7 +41,9 @@ version values. Dependencies retain their own versions in the project files.
 To inspect release packages after a successful Release build:
 
 ```powershell
-dotnet pack Pipeline.slnx --configuration Release --no-build --output artifacts/packages
+# Include Docker-dependent Aspire tests.
+$packages = ./Build.ps1 -IncludeAspire
+./eng/Test-Packages.ps1 -PackageDirectory $packages
 ```
 
 Use [GitHub issues](https://github.com/patware/Patware.Pipeline/issues) for
