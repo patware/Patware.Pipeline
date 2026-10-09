@@ -72,23 +72,34 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Trust development HTTPS certificate
+      - name: Configure HTTPS certificate trust
+        shell: bash
         run: |
-          dotnet dev-certs https --trust --verbose
+          set -euo pipefail
 
-          if ($LASTEXITCODE -ne 0) {
-              throw 'Could not trust the development HTTPS certificate.'
-          }
+          certificate_path="$RUNNER_TEMP/pipeline-dev-cert.crt"
 
-          # Make the development certificate discoverable by OpenSSL
-          # in subsequent steps and their child processes.
-          $certificateDirectories = "$env:HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+          # Create/select the runner user's development certificate,
+          # exporting only its public certificate.
+          dotnet dev-certs https \
+            --export-path "$certificate_path" \
+            --format PEM
 
-          if (![string]::IsNullOrWhiteSpace($env:SSL_CERT_DIR)) {
-              $certificateDirectories += ":$env:SSL_CERT_DIR"
-          }
+          # Install it in Ubuntu's system trust store.
+          sudo install -m 0644 "$certificate_path" \
+            /usr/local/share/ca-certificates/pipeline-dev-cert.crt
 
-          "SSL_CERT_DIR=$certificateDirectories" >> $env:GITHUB_ENV
+          sudo update-ca-certificates
+
+          # Verify trust and the hostname used by Aspire's health checks.
+          openssl verify \
+            -CAfile /etc/ssl/certs/ca-certificates.crt \
+            -purpose sslserver \
+            -verify_hostname localhost \
+            "$certificate_path"
+
+          # Expose system trust to subsequent steps and child processes.
+          echo "SSL_CERT_DIR=/etc/ssl/certs" >> "$GITHUB_ENV"
 
       - name: Check Docker
         run: |
