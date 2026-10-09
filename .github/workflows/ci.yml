@@ -72,6 +72,24 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Trust development HTTPS certificate
+        run: |
+          dotnet dev-certs https --trust --verbose
+
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Could not trust the development HTTPS certificate.'
+          }
+
+          # Make the development certificate discoverable by OpenSSL
+          # in subsequent steps and their child processes.
+          $certificateDirectories = "$env:HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+
+          if (![string]::IsNullOrWhiteSpace($env:SSL_CERT_DIR)) {
+              $certificateDirectories += ":$env:SSL_CERT_DIR"
+          }
+
+          "SSL_CERT_DIR=$certificateDirectories" >> $env:GITHUB_ENV
+
       - name: Check Docker
         run: |
           docker info
